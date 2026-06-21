@@ -32,7 +32,7 @@ Yazılım, görev tabanlı ve modüler bir yapı üzerine geliştirilmiştir. T�
 ## Geliştirme Ekibi
 
 * Yazılım Geliştirici: Gül Nihal Gür
-* Yazılım Geliştirici: Beyza
+* Yazılım Geliştirici: Ayşe Beyza Nur Binar
 
 ## Yarışma
 
