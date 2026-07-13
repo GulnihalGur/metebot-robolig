@@ -1,13 +1,8 @@
 #include "Zipline.h"
 
-Zipline::Zipline(
-    MotorDriver& motorDriver,
-    LinearActuator& linearActuator,
-    FailSafe& failSafe
-)
+Zipline::Zipline(MotorDriver& motorDriver, LinearActuator& linearActuator)
     : motorDriver(motorDriver),
-      linearActuator(linearActuator),
-      failSafe(failSafe)
+      linearActuator(linearActuator)
 {
 }
 
