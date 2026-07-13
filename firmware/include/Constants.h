@@ -23,4 +23,8 @@ constexpr float BATTERY_FULL_VOLTAGE    = 12.6f;
 constexpr float BATTERY_NOMINAL_VOLTAGE = 11.1f;
 constexpr float LOW_BATTERY_VOLTAGE     = 10.5f;
 
+namespace Constants
+{
+    constexpr uint8_t MAX_TASK_COUNT = 12;
+}
 #endif
