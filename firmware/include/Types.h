@@ -7,7 +7,7 @@ enum class RobotState
 {
     IDLE,
     MANUAL,
-    PICKUP,  
+    PICKUP,
     DELIVERY,
     ZIPLINE,
     FINISH,

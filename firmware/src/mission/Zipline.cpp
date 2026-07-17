@@ -1,14 +1,19 @@
 #include "Zipline.h"
 
-Zipline::Zipline(MotorDriver& motorDriver, LinearActuator& linearActuator)
-    : motorDriver(motorDriver),
-      linearActuator(linearActuator)
+Zipline::Zipline(
+    MotionController& motionController,
+    LinearActuator& linearActuator,
+    FailSafe& failSafe
+)
+    : motionController(motionController),
+      linearActuator(linearActuator),
+      failSafe(failSafe)
 {
 }
 
 void Zipline::begin()
 {
-    currentState = State::IDLE;
+    reset();
 }
 
 void Zipline::start()
@@ -19,14 +24,14 @@ void Zipline::start()
     }
 
     if (failSafe.isActive() ||
-        !motorDriver.ready() ||
+        !motionController.ready() ||
         !linearActuator.ready())
     {
         fail();
         return;
     }
 
-    motorDriver.stopDrive();
+    motionController.stop();
     linearActuator.extend();
 
     currentState = State::EXTENDING;
@@ -34,8 +39,8 @@ void Zipline::start()
 
 void Zipline::update()
 {
-    // Süreli aktüatör hareketlerinin otomatik durmasını sağlar.
     linearActuator.update();
+    motionController.update();
 
     if (!isActive())
     {
@@ -44,38 +49,41 @@ void Zipline::update()
 
     if (failSafe.isActive())
     {
-        motorDriver.stopAll();
-        linearActuator.stop();
-
-        currentState = State::FAILED;
+        fail();
         return;
     }
 
     switch (currentState)
     {
         case State::EXTENDING:
-            // Aktüatör uzar; yeterli konum pilot tarafından onaylanır.
+            /*
+             * Lineer aktüatör uzar.
+             * Limit switch olmadığı için pilot uzama tamamlandığında
+             * confirmExtensionCompleted() çağrısını yapar.
+             */
             break;
 
         case State::POSITIONING:
             /*
-             * Pilot, joystick kullanarak robotu zipline hattına yerleştirir.
-             * Sürüş motorları bu aşamada manuel olarak kontrol edilebilir.
+             * Pilot robotu joystick ile zipline hattına hizalar.
+             * Bu aşamada MotionController üzerinden manuel sürüş yapılabilir.
              */
             break;
 
         case State::SLIDING:
             /*
-             * Ayrı bir zipline motoru bulunmamaktadır.
-             * Sürüş motorları ve aktüatör durdurulur;
-             * robot eğim ve yerçekimiyle serbestçe kayar.
+             * Zipline için ayrı motor yoktur.
+             * Robot eğim ve yerçekimiyle kayar.
              */
-            motorDriver.stopDrive();
+            motionController.stop();
             linearActuator.stop();
             break;
 
         case State::RETRACTING:
-            // Aktüatör geri çekilir; bitiş pilot tarafından onaylanır.
+            /*
+             * Aktüatör geri çekilir.
+             * Limit switch olmadığı için pilot tamamlandığını onaylar.
+             */
             break;
 
         default:
@@ -94,14 +102,14 @@ void Zipline::confirmExtensionCompleted()
     currentState = State::POSITIONING;
 }
 
-void Zipline::confirmPositioning()
+void Zipline::confirmPositioningCompleted()
 {
     if (currentState != State::POSITIONING)
     {
         return;
     }
 
-    motorDriver.stopDrive();
+    motionController.stop();
     linearActuator.stop();
 
     if (!canStartSliding())
@@ -120,7 +128,7 @@ void Zipline::confirmSlideCompleted()
         return;
     }
 
-    motorDriver.stopAll();
+    motionController.stop();
     linearActuator.retract();
 
     currentState = State::RETRACTING;
@@ -139,7 +147,7 @@ void Zipline::confirmRetractionCompleted()
 
 void Zipline::reset()
 {
-    motorDriver.stopDrive();
+    motionController.stop();
     linearActuator.stop();
 
     currentState = State::IDLE;
@@ -147,7 +155,7 @@ void Zipline::reset()
 
 void Zipline::cancel()
 {
-    motorDriver.stopAll();
+    motionController.stop();
     linearActuator.stop();
 
     currentState = State::CANCELLED;
@@ -155,7 +163,7 @@ void Zipline::cancel()
 
 void Zipline::fail()
 {
-    motorDriver.stopAll();
+    motionController.emergencyStop();
     linearActuator.stop();
 
     currentState = State::FAILED;
@@ -187,7 +195,8 @@ Zipline::State Zipline::getState() const
 bool Zipline::canStartSliding() const
 {
     return !failSafe.isActive() &&
-           motorDriver.ready() &&
+           motionController.ready() &&
+           !motionController.emergencyStopped() &&
            linearActuator.ready() &&
            linearActuator.direction() ==
                LinearActuator::Direction::Stop;
