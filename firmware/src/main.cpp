@@ -10,6 +10,7 @@
 #include "core/FailSafe.h"
 #include "core/StateMachine.h"
 #include "core/ErrorManager.h"
+#include "core/TaskScheduler.h"
 
 #include "communication/UART.h"
 #include "communication/Joystick.h"
@@ -38,6 +39,17 @@ Watchdog watchdog;
 FailSafe failSafe;
 StateMachine stateMachine;
 ErrorManager errorManager;
+
+/*
+ * Periyodik görevleri delay() kullanmadan çalıştırır.
+ *
+ * Bu projede şimdilik:
+ * - Batarya kontrolü
+ * - OLED ekran güncellemesi
+ *
+ * TaskScheduler tarafından yönetilir.
+ */
+TaskScheduler taskScheduler;
 
 
 // =====================================================
@@ -98,15 +110,22 @@ MissionManager missionManager(
 
 namespace PowerConfig
 {
+    /*
+     * TaskScheduler batarya kontrol fonksiyonunu
+     * her 1000 ms'de bir çağırır.
+     */
     constexpr uint32_t CHECK_INTERVAL_MS = 1000;
 
     // 3S Li-Po düşük batarya sınırı.
     constexpr float LOW_BATTERY_THRESHOLD_V = 10.5f;
 
-    // Düşük bataryadan kurtarma için gerekli voltaj.
+    // FailSafe'den çıkmak için gereken minimum voltaj.
     constexpr float RECOVERY_THRESHOLD_V = 11.1f;
 
-    // Tek bir anlık voltaj düşüşünde FailSafe oluşturulmaz.
+    /*
+     * Tek bir anlık voltaj düşüşünde FailSafe oluşturulmaz.
+     * Arka arkaya üç düşük ölçüm görülmesi gerekir.
+     */
     constexpr uint8_t REQUIRED_LOW_SAMPLES = 3;
 }
 
@@ -114,9 +133,6 @@ namespace PowerConfig
 // =====================================================
 // RUNTIME STATE
 // =====================================================
-
-static uint32_t lastDisplayUpdateMs = 0;
-static uint32_t lastPowerCheckMs = 0;
 
 static uint8_t consecutiveLowBatterySamples = 0;
 
@@ -189,6 +205,10 @@ static const char* errorCodeName(ErrorCode errorCode)
 }
 
 
+/*
+ * Joystick ile sürüş yapılmasına izin verilen
+ * robot durumlarını kontrol eder.
+ */
 static bool isManualDriveState(RobotState state)
 {
     return state == RobotState::MANUAL ||
@@ -571,9 +591,6 @@ static bool canRecoverFromCurrentError()
         /*
          * Joystick bağlantısı yeniden kurulmadan
          * FailSafe temizlenemez.
-         *
-         * En az bir geçerli ve zaman aşımına uğramamış
-         * joystick paketi alınmış olmalıdır.
          */
         return joystick.packet().valid &&
                !joystick.timedOut();
@@ -737,7 +754,7 @@ static void triggerCommunicationLostFailSafe()
     communicationFailSafeTriggered = true;
 
     /*
-     * Motorlar FailSafe durum değişikliği beklenmeden
+     * Durum değişikliği beklenmeden motorlar
      * hemen durdurulur.
      */
     motionController.stop();
@@ -814,9 +831,18 @@ static void triggerLowBatteryFailSafe(
 
 
 // =====================================================
-// POWER MONITORING
+// SCHEDULED TASK: POWER MONITORING
 // =====================================================
 
+/*
+ * Bu fonksiyon artık loop() içinde doğrudan çağrılmaz.
+ *
+ * TaskScheduler tarafından
+ * PowerConfig::CHECK_INTERVAL_MS aralığında çalıştırılır.
+ *
+ * Bu nedenle fonksiyonun içinde ayrıca millis()
+ * kontrolü yapılmasına gerek yoktur.
+ */
 static void updatePowerMonitoring()
 {
     if (!RobotConfig::USE_POWER_MONITORING ||
@@ -825,18 +851,6 @@ static void updatePowerMonitoring()
     {
         return;
     }
-
-    const uint32_t now = millis();
-
-    if (
-        now - lastPowerCheckMs <
-        PowerConfig::CHECK_INTERVAL_MS
-    )
-    {
-        return;
-    }
-
-    lastPowerCheckMs = now;
 
     const float batteryVoltage =
         powerManager.readBatteryVoltage();
@@ -873,8 +887,11 @@ static void updatePowerMonitoring()
     }
 
     /*
-     * Voltaj normale döndüğünde yalnızca sayaç sıfırlanır.
-     * Aktif FailSafe otomatik kaldırılmaz.
+     * Voltaj normale döndüğünde yalnızca düşük ölçüm
+     * sayacı sıfırlanır.
+     *
+     * Aktif bir FailSafe otomatik olarak kaldırılmaz.
+     * Pilotun RECOVER komutu göndermesi gerekir.
      */
     consecutiveLowBatterySamples = 0;
 }
@@ -900,12 +917,11 @@ static void handleCommunication()
                 missionManager.currentState();
 
             /*
-             * FailSafe sırasında joystick paketinin alınmasına
-             * izin verilir. Böylece bağlantının geri geldiği
-             * anlaşılır.
+             * FailSafe sırasında joystick paketleri alınmaya
+             * devam eder. Böylece bağlantının geri geldiği
+             * anlaşılabilir.
              *
-             * Fakat RECOVER komutu verilene kadar motorlara
-             * hiçbir hareket komutu gönderilmez.
+             * RECOVER komutu verilmeden motor çalıştırılmaz.
              */
             if (
                 failSafe.isActive() ||
@@ -961,7 +977,7 @@ static void handleCommunication()
             {
                 /*
                  * ZIPLINE ve FINISH durumlarında joystick
-                 * sürüş komutu kabul edilmez.
+                 * sürüş komutları kabul edilmez.
                  */
                 motionController.stop();
             }
@@ -990,13 +1006,12 @@ static void handleCommunication()
     }
 
     /*
-     * Robot sürüş durumundayken daha önce geçerli bir
-     * joystick paketi alınmışsa ve paket zaman aşımına
-     * uğradıysa:
+     * Robot sürüş durumundayken joystick zaman aşımına
+     * uğrarsa iletişim kaynaklı FailSafe oluşturulur.
      *
-     * 1. Motorlar durdurulur.
-     * 2. Hata nedeni COMMUNICATION_LOST olarak kaydedilir.
-     * 3. Robot FAIL_SAFE durumuna geçirilir.
+     * Bu kontrol hızlı tepki vermesi gerektiği için
+     * TaskScheduler'a bağlanmadı ve her loop turunda
+     * çalışmaya devam ediyor.
      */
     if (
         isManualDriveState(
@@ -1012,9 +1027,15 @@ static void handleCommunication()
 
 
 // =====================================================
-// DISPLAY
+// SCHEDULED TASK: DISPLAY
 // =====================================================
 
+/*
+ * Bu fonksiyon TaskScheduler tarafından
+ * DISPLAY_UPDATE_INTERVAL_MS aralığında çağrılır.
+ *
+ * Fonksiyonun içinde ayrıca millis() kontrolü yoktur.
+ */
 static void updateDisplay()
 {
     if (!oled.ready())
@@ -1022,23 +1043,12 @@ static void updateDisplay()
         return;
     }
 
-    const uint32_t now = millis();
-
-    if (
-        now - lastDisplayUpdateMs <
-        DISPLAY_UPDATE_INTERVAL_MS
-    )
-    {
-        return;
-    }
-
-    lastDisplayUpdateMs = now;
-
     const RobotState state =
         missionManager.currentState();
 
     /*
-     * FailSafe ekranı normal ekran tarafından ezilmez.
+     * FailSafe ekranının normal durum ekranı tarafından
+     * ezilmesini önler.
      */
     if (state == RobotState::FAIL_SAFE)
     {
@@ -1060,6 +1070,10 @@ static void updateDisplay()
         return;
     }
 
+    /*
+     * Robot manuel sürüş durumundaysa joystick ve
+     * motor PWM bilgileri ekranda gösterilir.
+     */
     if (
         isManualDriveState(state) &&
         joystick.packet().valid
@@ -1074,6 +1088,10 @@ static void updateDisplay()
         return;
     }
 
+    /*
+     * Batarya ölçümü kullanılabiliyorsa robot durumu
+     * ile birlikte voltaj da gösterilir.
+     */
     if (
         powerMonitoringAvailable &&
         powerManager.ready()
@@ -1101,6 +1119,114 @@ static void updateDisplay()
 
 
 // =====================================================
+// TASK SCHEDULER INITIALIZATION
+// =====================================================
+
+/*
+ * Periyodik görevleri TaskScheduler'a kaydeder.
+ *
+ * Şimdilik iki görev bulunur:
+ *
+ * 1. Batarya kontrolü
+ * 2. OLED ekran güncellemesi
+ *
+ * Başarılı olursa true döndürür.
+ */
+static bool initializeScheduledTasks()
+{
+    taskScheduler.begin();
+
+    // -------------------------------------------------
+    // Power monitoring task
+    // -------------------------------------------------
+
+    const int8_t powerTaskId =
+        taskScheduler.addTask(
+            updatePowerMonitoring,
+            PowerConfig::CHECK_INTERVAL_MS,
+
+            /*
+             * true:
+             * Scheduler'ın ilk update() çağrısında
+             * batarya kontrolü hemen yapılır.
+             */
+            true
+        );
+
+    if (
+        powerTaskId ==
+        TaskScheduler::INVALID_TASK_ID
+    )
+    {
+        Serial.println(
+            "ERROR: Power monitoring task could not be added."
+        );
+
+        return false;
+    }
+
+    Serial.print(
+        "Power monitoring task added. Task ID: "
+    );
+
+    Serial.println(powerTaskId);
+
+    // -------------------------------------------------
+    // Display update task
+    // -------------------------------------------------
+
+    const int8_t displayTaskId =
+        taskScheduler.addTask(
+            updateDisplay,
+            DISPLAY_UPDATE_INTERVAL_MS,
+
+            /*
+             * true:
+             * OLED ilk scheduler güncellemesinde
+             * hemen yenilenir.
+             */
+            true
+        );
+
+    if (
+        displayTaskId ==
+        TaskScheduler::INVALID_TASK_ID
+    )
+    {
+        Serial.println(
+            "ERROR: Display task could not be added."
+        );
+
+        /*
+         * İkinci görev eklenemezse daha önce eklenen
+         * batarya görevi de kaldırılır.
+         */
+        taskScheduler.removeTask(
+            static_cast<uint8_t>(powerTaskId)
+        );
+
+        return false;
+    }
+
+    Serial.print(
+        "Display task added. Task ID: "
+    );
+
+    Serial.println(displayTaskId);
+
+    Serial.print(
+        "TaskScheduler started. Task count: "
+    );
+
+    Serial.println(
+        taskScheduler.getTaskCount()
+    );
+
+    return true;
+}
+
+
+// =====================================================
 // ARDUINO SETUP
 // =====================================================
 
@@ -1112,11 +1238,15 @@ void setup()
     printProjectInformation();
 
     watchdog.begin();
+
     Serial.println(
         "Watchdog started."
     );
 
-    const bool modulesReady =
+    /*
+     * Robotun donanım ve görev modülleri başlatılır.
+     */
+    bool systemReady =
         initializeRobotModules();
 
     missionManager.begin();
@@ -1125,7 +1255,26 @@ void setup()
         "MissionManager started."
     );
 
-    if (!modulesReady)
+    /*
+     * Periyodik görevler TaskScheduler'a eklenir.
+     */
+    const bool schedulerReady =
+        initializeScheduledTasks();
+
+    if (!schedulerReady)
+    {
+        Serial.println(
+            "ERROR: TaskScheduler initialization failed."
+        );
+
+        errorManager.setError(
+            ErrorCode::UNKNOWN_ERROR
+        );
+
+        systemReady = false;
+    }
+
+    if (!systemReady)
     {
         Serial.println(
             "ERROR: One or more modules could not start."
@@ -1185,27 +1334,35 @@ void setup()
     }
 
     Serial.println("Commands:");
+
     Serial.println(
         "  JOY,x,y,buttons"
     );
+
     Serial.println(
         "  JOY,x,y,twist,throttle,hat,buttons"
     );
+
     Serial.println(
         "  STATE,IDLE | STATE,MANUAL | STATE,PICKUP"
     );
+
     Serial.println(
         "  STATE?"
     );
+
     Serial.println(
         "  ERROR?"
     );
+
     Serial.println(
         "  POWER?"
     );
+
     Serial.println(
         "  RECOVER"
     );
+
     Serial.println(
         "================================"
     );
@@ -1218,6 +1375,10 @@ void setup()
 
 void loop()
 {
+    // -------------------------------------------------
+    // Watchdog
+    // -------------------------------------------------
+
     if (watchdog.hasTimedOut())
     {
         Serial.println(
@@ -1238,8 +1399,22 @@ void loop()
         watchdog.feed();
     }
 
+    /*
+     * UART ve joystick haberleşmesi mümkün olduğunca
+     * hızlı çalışmalıdır. Bu nedenle scheduler'a bağlı
+     * değildir ve her loop turunda çağrılır.
+     */
     handleCommunication();
-    updatePowerMonitoring();
+
+    /*
+     * Batarya ve ekran gibi zamanlanmış görevleri
+     * gereken aralıklarla çalıştırır.
+     */
+    taskScheduler.update();
+
+    /*
+     * MissionManager durum makinesinin gecikmeden
+     * ilerlemesi için her loop turunda güncellenir.
+     */
     missionManager.update();
-    updateDisplay();
 }
