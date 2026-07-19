@@ -5,7 +5,8 @@ RobotArm::RobotArm()
     _servoManager(nullptr),
     _lastControlMs(0),
     _ready(false),
-    _timedOut(true) {}
+    _timedOut(true),
+    _active(false) {}
 
 bool RobotArm::begin(Joystick& joystick,
                      ServoManager& servoManager,
@@ -14,7 +15,11 @@ bool RobotArm::begin(Joystick& joystick,
       config.joystickTimeoutMs == 0 ||
       config.minControlSpeedDegPerSec == 0 ||
       config.minControlSpeedDegPerSec >
-        config.maxControlSpeedDegPerSec) {
+        config.maxControlSpeedDegPerSec ||
+      config.gripperOpenButton >= 32 ||
+      config.gripperCloseButton >= 32 ||
+      config.gripperOpenButton ==
+        config.gripperCloseButton) {
     return false;
   }
 
@@ -24,6 +29,7 @@ bool RobotArm::begin(Joystick& joystick,
 
   _lastControlMs = millis();
   _timedOut = true;
+  _active = false;
   _ready = true;
 
   return true;
@@ -31,6 +37,12 @@ bool RobotArm::begin(Joystick& joystick,
 
 void RobotArm::update() {
   if (!_ready) return;
+
+  // DRIVE modunda joystick eksenlerini kola uygulamaz.
+  if (!_active) {
+    _servoManager->update();
+    return;
+  }
 
   uint32_t now = millis();
   uint32_t elapsedMs = now - _lastControlMs;
@@ -57,6 +69,24 @@ void RobotArm::update() {
 
   // Servo hareketlerini bloklamadan ilerletir.
   _servoManager->update();
+}
+
+
+void RobotArm::setActive(bool activeValue) {
+  if (!_ready || _active == activeValue) return;
+
+  _active = activeValue;
+  _lastControlMs = millis();
+  _timedOut = true;
+
+  // Kol kontrolu kapanirken hedefleri mevcut acilarda tutar.
+  if (!_active) {
+    stop();
+  }
+}
+
+bool RobotArm::active() const {
+  return _active;
 }
 
 void RobotArm::moveHome() {
