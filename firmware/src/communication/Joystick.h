@@ -42,6 +42,9 @@ public:
   // Belirtilen buton basili mi kontrol eder.
   bool buttonPressed(uint8_t buttonIndex) const;
 
+  // Butona bu pakette yeni basildi mi kontrol eder.
+  bool buttonJustPressed(uint8_t buttonIndex) const;
+
   // Veri zaman asimina ugradi mi kontrol eder.
   bool timedOut(uint16_t timeoutMs = Pins::JOYSTICK_TIMEOUT_MS) const;
 
@@ -51,6 +54,9 @@ public:
 private:
   // Son alinan joystick paketi.
   JoystickPacket _packet;
+
+  // Bir onceki paketin buton bit maskesi.
+  uint32_t _previousButtons;
 
   // Komut baslangicini kontrol eder.
   static bool startsWithCommand(const String& line, const char* command);
