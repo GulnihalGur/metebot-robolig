@@ -97,6 +97,15 @@ public:
     void confirmZiplineSlideCompleted();
     void confirmZiplineRetractionCompleted();
 
+    /*
+     * Tek pilot onay tusuyla mevcut zipline alt adimini
+     * yalnizca bir kez ilerletir.
+     */
+    bool confirmCurrentZiplineStep();
+
+    // Mevcut zipline alt durumunu dondurur.
+    Zipline::State currentZiplineState() const;
+
 
     // =====================================================
     // SAFETY / RECOVERY

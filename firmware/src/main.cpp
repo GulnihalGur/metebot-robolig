@@ -59,8 +59,8 @@ constexpr RobotArmConfig ARM_CONFIG = {
     90,
     20,
     90,
-    0,
-    1,
+    Constants::JoystickButtons::GRIPPER_OPEN,
+    Constants::JoystickButtons::GRIPPER_CLOSE,
     false,
     false,
     false
@@ -145,6 +145,12 @@ bool rfidAvailable = false;
 bool communicationFailSafeTriggered = false;
 bool lowBatteryFailSafeTriggered = false;
 uint8_t consecutiveLowBatterySamples = 0;
+
+// Mod degisiminden sonra eksenler merkeze gelmeden yeni mod komut kabul etmez.
+bool controlInputArmed = false;
+
+// ZIPLINE POSITIONING baslarken joystick merkeze alinmalidir.
+bool ziplineDriveInputArmed = false;
 }  // namespace Runtime
 
 /**
@@ -195,6 +201,61 @@ static bool pinsAssigned(const Pins::BtsPins& pins) {
 }
 
 /**
+ * @brief ZIPLINE alt durumunu okunabilir metne cevirir.
+ */
+static const char* ziplineStateName(Zipline::State state) {
+    switch (state) {
+        case Zipline::State::IDLE: return "IDLE";
+        case Zipline::State::EXTENDING: return "EXTENDING";
+        case Zipline::State::POSITIONING: return "POSITIONING";
+        case Zipline::State::SLIDING: return "SLIDING";
+        case Zipline::State::RETRACTING: return "RETRACTING";
+        case Zipline::State::COMPLETED: return "COMPLETED";
+        case Zipline::State::CANCELLED: return "CANCELLED";
+        case Zipline::State::FAILED: return "FAILED";
+    }
+    return "UNKNOWN";
+}
+
+/**
+ * @brief X, Y ve twist eksenlerinin deadzone sonrasinda merkezde olup olmadigini kontrol eder.
+ */
+static bool joystickAxesCentered() {
+    const JoystickPacket& packet = joystick.packet();
+    return packet.valid &&
+           packet.xPercent == 0 &&
+           packet.yPercent == 0 &&
+           packet.twistPercent == 0;
+}
+
+/**
+ * @brief Mod degisimi sonrasinda joystick merkezlenene kadar hareketi kilitler.
+ */
+static bool armControlInputWhenCentered() {
+    if (Runtime::controlInputArmed) {
+        return true;
+    }
+
+    if (!joystickAxesCentered()) {
+        motionController.stop();
+        robotArm.setActive(false);
+        return false;
+    }
+
+    Runtime::controlInputArmed = true;
+    uartLink.sendOk(String("MODE_READY,") + controlModeName(Runtime::controlMode));
+    return true;
+}
+
+/**
+ * @brief Bir BTS7960 kanalinin iki kontrol pininin de atanmis olup olmadigini
+ *        kontrol eder. UNUSED_PIN bulunan bir modul baslatilmaz.
+ */
+static bool pinsAssigned(const Pins::BtsPins& pins) {
+    return pins.rpwm != Pins::UNUSED_PIN && pins.lpwm != Pins::UNUSED_PIN;
+}
+
+/**
  * @brief Mevcut gorev durumunda manuel suruse izin verilip verilmedigini belirler.
  *
  * ZIPLINE durumunda surus yalnizca POSITIONING alt durumunda aciktir. Diger
@@ -219,10 +280,23 @@ static bool isDriveMissionState(RobotState state) {
  */
 static bool joystickControlActive() {
     const RobotState state = missionManager.currentState();
-    if (Runtime::controlMode == ControlMode::ARM) {
-        return state == RobotState::MANUAL || state == RobotState::PICKUP;
+
+    if (state == RobotState::ZIPLINE) {
+        return zipline.getState() == Zipline::State::POSITIONING;
     }
-    return isDriveMissionState(state);
+
+    const bool manualState =
+        state == RobotState::MANUAL ||
+        state == RobotState::PICKUP ||
+        state == RobotState::DELIVERY;
+
+    if (!manualState) {
+        return false;
+    }
+
+    return Runtime::controlMode == ControlMode::DRIVE ||
+           (Runtime::controlMode == ControlMode::ARM &&
+            Runtime::servoSystemAvailable);
 }
 
 /**
@@ -517,17 +591,33 @@ static bool setControlMode(ControlMode newMode) {
         return false;
     }
 
-    // Fiziksel servo sistemi hazir degilse ARM moduna gecis reddedilir.
     if (newMode == ControlMode::ARM && !Runtime::servoSystemAvailable) {
         uartLink.sendError("ARM_NOT_AVAILABLE");
         return false;
     }
 
-    // Mod degisiminde once her iki hareket sistemi de sifirlanir.
+    if (Runtime::controlMode == newMode) {
+        return true;
+    }
+
     motionController.stop();
-    robotArm.stop();
+    robotArm.setActive(false);
+
     Runtime::controlMode = newMode;
-    uartLink.sendOk(String("MODE,") + controlModeName(newMode));
+    Runtime::controlInputArmed = false;
+
+    uartLink.sendOk(
+        String("MODE,") + controlModeName(newMode) + ",CENTER_JOYSTICK"
+    );
+
+    if (oled.ready()) {
+        oled.status(
+            "CONTROL MODE",
+            controlModeName(newMode),
+            "CENTER JOYSTICK"
+        );
+    }
+
     return true;
 }
 
@@ -580,6 +670,9 @@ static bool handleRecoveryCommand() {
     Runtime::lowBatteryFailSafeTriggered = false;
     Runtime::communicationFailSafeTriggered = false;
     Runtime::controlMode = ControlMode::DRIVE;
+    Runtime::controlInputArmed = false;
+    Runtime::ziplineDriveInputArmed = false;
+    robotArm.setActive(false);
 
     uartLink.sendOk(String("RECOVERED,") + robotStateName(missionManager.currentState()));
     return true;
@@ -637,7 +730,9 @@ static bool handleTextCommand(const String& rawLine) {
  */
 static void enterFailSafe(ErrorCode error, const String& message) {
     motionController.stop();
-    robotArm.stop();
+    robotArm.setActive(false);
+    Runtime::controlInputArmed = false;
+    Runtime::ziplineDriveInputArmed = false;
     linearActuator.stop();
     errorManager.setError(error);
     uartLink.sendError(message);
@@ -712,38 +807,132 @@ static void updatePowerMonitoring() {
  * ARM modunda surus motorlari, DRIVE modunda ise robot kolu durdurulur.
  */
 static void applyJoystickControl() {
-    const RobotState state = missionManager.currentState();
+    RobotState state = missionManager.currentState();
 
     if (failSafe.isActive() || state == RobotState::FAIL_SAFE) {
         motionController.stop();
-        robotArm.stop();
+        robotArm.setActive(false);
+        Runtime::controlInputArmed = false;
+        Runtime::ziplineDriveInputArmed = false;
         return;
     }
+
+    /*
+     * ZIPLINE sirasinda ARM modu kullanilmaz.
+     * Button 4 (indeks 3) mevcut ZIPLINE adimini onaylar.
+     */
+    if (state == RobotState::ZIPLINE) {
+        robotArm.setActive(false);
+        Runtime::controlInputArmed = false;
+
+        if (Runtime::controlMode != ControlMode::DRIVE) {
+            motionController.stop();
+            Runtime::controlMode = ControlMode::DRIVE;
+            uartLink.sendOk("MODE,DRIVE,ZIPLINE");
+        }
+
+        if (joystick.buttonJustPressed(
+                Constants::JoystickButtons::ZIPLINE_CONFIRM)) {
+            motionController.stop();
+            Runtime::ziplineDriveInputArmed = false;
+
+            if (missionManager.confirmCurrentZiplineStep()) {
+                uartLink.sendOk(
+                    String("ZIPLINE_CONFIRM,") +
+                    ziplineStateName(missionManager.currentZiplineState())
+                );
+            } else {
+                uartLink.sendError("ZIPLINE_CONFIRM_REJECTED");
+            }
+
+            // Onay paketi ayni anda hareket komutu olarak kullanilmaz.
+            return;
+        }
+
+        if (missionManager.currentZiplineState() ==
+            Zipline::State::POSITIONING) {
+            if (!Runtime::ziplineDriveInputArmed) {
+                if (!joystickAxesCentered()) {
+                    motionController.stop();
+                    return;
+                }
+
+                Runtime::ziplineDriveInputArmed = true;
+                uartLink.sendOk("ZIPLINE_POSITIONING_READY");
+            }
+
+            if (!motionController.driveFromJoystick(joystick)) {
+                motionController.stop();
+                uartLink.sendError("ZIPLINE_DRIVE_REJECTED");
+            }
+        } else {
+            Runtime::ziplineDriveInputArmed = false;
+            motionController.stop();
+        }
+
+        return;
+    }
+
+    Runtime::ziplineDriveInputArmed = false;
 
     // Ilk gecerli pilot komutu IDLE durumundan manuel kontrole gecisi baslatir.
     if (state == RobotState::IDLE) {
         if (!missionManager.requestState(RobotState::MANUAL)) {
             uartLink.sendError("AUTO_MANUAL_TRANSITION_FAILED");
+            motionController.stop();
+            robotArm.setActive(false);
             return;
         }
+
+        state = RobotState::MANUAL;
         uartLink.sendOk("STATE,MANUAL");
     }
 
-    // ARM modunda surus cikisi kesin olarak kapatilir.
-    if (Runtime::controlMode == ControlMode::ARM) {
+    const bool manualState =
+        state == RobotState::MANUAL ||
+        state == RobotState::PICKUP ||
+        state == RobotState::DELIVERY;
+
+    if (!manualState) {
         motionController.stop();
+        robotArm.setActive(false);
+        Runtime::controlInputArmed = false;
         return;
     }
 
-    // DRIVE modunda kol hareketi durdurulur; surus yalnizca izinli gorev durumlarinda acilir.
-    robotArm.stop();
-    if (isDriveMissionState(missionManager.currentState())) {
-        if (!motionController.driveFromJoystick(joystick)) {
-            motionController.stop();
-            uartLink.sendError("JOYSTICK_DRIVE_REJECTED");
-        }
-    } else {
+    /*
+     * Button 3 (indeks 2) DRIVE ve ARM arasinda gecis yapar.
+     * buttonJustPressed kullanildigi icin basili tutulunca tekrar etmez.
+     */
+    if (joystick.buttonJustPressed(
+            Constants::JoystickButtons::MODE_TOGGLE)) {
+        const ControlMode nextMode =
+            Runtime::controlMode == ControlMode::DRIVE
+                ? ControlMode::ARM
+                : ControlMode::DRIVE;
+
+        setControlMode(nextMode);
+
+        // Mod degistiren paket hareket komutu olarak kullanilmaz.
+        return;
+    }
+
+    // Mod degisiminden sonra eksenler merkeze donmeden kontrol acilmaz.
+    if (!armControlInputWhenCentered()) {
+        return;
+    }
+
+    if (Runtime::controlMode == ControlMode::ARM) {
         motionController.stop();
+        robotArm.setActive(true);
+        return;
+    }
+
+    robotArm.setActive(false);
+
+    if (!motionController.driveFromJoystick(joystick)) {
+        motionController.stop();
+        uartLink.sendError("JOYSTICK_DRIVE_REJECTED");
     }
 }
 
@@ -779,12 +968,25 @@ static void handleCommunication() {
  * ServoManager daha once belirlenen hedeflere yumusak gecisi surdurur.
  */
 static void updateControlOutputs() {
-    if (Runtime::servoSystemAvailable) {
-        if (Runtime::controlMode == ControlMode::ARM && !failSafe.isActive()) {
-            robotArm.update();
-        } else {
-            servoManager.update();
-        }
+    if (!Runtime::servoSystemAvailable) {
+        return;
+    }
+
+    const RobotState state = missionManager.currentState();
+    const bool armMissionState =
+        state == RobotState::MANUAL ||
+        state == RobotState::PICKUP ||
+        state == RobotState::DELIVERY;
+
+    if (Runtime::controlMode == ControlMode::ARM &&
+        Runtime::controlInputArmed &&
+        armMissionState &&
+        !failSafe.isActive()) {
+        robotArm.setActive(true);
+        robotArm.update();
+    } else {
+        robotArm.setActive(false);
+        servoManager.update();
     }
 }
 

@@ -1,7 +1,8 @@
 #include "Joystick.h"
 
 // Varsayilan joystick verilerini ayarlar.
-Joystick::Joystick() {
+Joystick::Joystick()
+  : _previousButtons(0) {
   _packet.xPercent = 0;
   _packet.yPercent = 0;
   _packet.twistPercent = 0;
@@ -43,6 +44,7 @@ bool Joystick::parseLine(const String& inputLine) {
     _packet.throttlePercent = 100;
     _packet.hatAngle = -1;
 
+    _previousButtons = _packet.buttons;
     _packet.buttons = static_cast<uint32_t>(fields[3].toInt());
     _packet.timestampMs = millis();
     _packet.valid = true;
@@ -80,6 +82,9 @@ bool Joystick::parseLine(const String& inputLine) {
   } else {
     _packet.hatAngle = static_cast<int16_t>(constrain(rawHat, 0L, 359L));
   }
+
+  // Onceki paketin butonlarini saklar.
+  _previousButtons = _packet.buttons;
 
   // Buton bit maskesini kaydeder.
   _packet.buttons = static_cast<uint32_t>(fields[6].toInt());
@@ -148,6 +153,17 @@ bool Joystick::buttonPressed(uint8_t buttonIndex) const {
   if (buttonIndex >= 32) return false;
 
   return (_packet.buttons & (1UL << buttonIndex)) != 0;
+}
+
+// Belirtilen butona bu pakette yeni basildi mi kontrol eder.
+bool Joystick::buttonJustPressed(uint8_t buttonIndex) const {
+  if (buttonIndex >= 32) return false;
+
+  const uint32_t mask = 1UL << buttonIndex;
+  const bool pressedNow = (_packet.buttons & mask) != 0;
+  const bool pressedBefore = (_previousButtons & mask) != 0;
+
+  return pressedNow && !pressedBefore;
 }
 
 // Joystick verisi zaman asimina ugradi mi kontrol eder.
@@ -242,3 +258,4 @@ int16_t Joystick::applyDeadzone(int16_t value, uint8_t deadzonePercent) {
 
   return value;
 }
+

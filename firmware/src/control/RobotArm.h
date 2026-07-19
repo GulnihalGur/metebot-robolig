@@ -35,6 +35,11 @@ public:
   // Joystick verisine gore hedef acilari hesaplar.
   void update();
 
+  // Kolun joystick kontrolunu etkinlestirir veya durdurur.
+  void setActive(bool active);
+
+  bool active() const;
+
   // Kolu baslangic konumuna yollar.
   void moveHome();
 
@@ -51,6 +56,7 @@ private:
   uint32_t _lastControlMs;
   bool _ready;
   bool _timedOut;
+  bool _active;
 
   // Joystick yuzdesini aci degisimine cevirir.
   int16_t calculateAngleChange(int16_t axisPercent,
