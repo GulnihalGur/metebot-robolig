@@ -266,6 +266,51 @@ void MissionManager::confirmZiplineRetractionCompleted()
 }
 
 
+bool MissionManager::confirmCurrentZiplineStep()
+{
+    if (!stateMachine.isState(RobotState::ZIPLINE))
+    {
+        return false;
+    }
+
+    /*
+     * Switch yalnizca bir case calistirir. Boylece tek tus basisi
+     * birden fazla zipline adimini arka arkaya gecemez.
+     */
+    switch (zipline.getState())
+    {
+        case Zipline::State::EXTENDING:
+            zipline.confirmExtensionCompleted();
+            return zipline.getState() ==
+                   Zipline::State::POSITIONING;
+
+        case Zipline::State::POSITIONING:
+            zipline.confirmPositioningCompleted();
+            return zipline.getState() ==
+                   Zipline::State::SLIDING;
+
+        case Zipline::State::SLIDING:
+            zipline.confirmSlideCompleted();
+            return zipline.getState() ==
+                   Zipline::State::RETRACTING;
+
+        case Zipline::State::RETRACTING:
+            zipline.confirmRetractionCompleted();
+            return zipline.getState() ==
+                   Zipline::State::COMPLETED;
+
+        default:
+            return false;
+    }
+}
+
+
+Zipline::State MissionManager::currentZiplineState() const
+{
+    return zipline.getState();
+}
+
+
 // =====================================================
 // SAFETY / RECOVERY
 // =====================================================
