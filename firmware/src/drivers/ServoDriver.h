@@ -12,7 +12,7 @@ public:
   // Sinifin kurucu fonksiyonu.
   ServoDriver();
 
-  // Servolari baslatir ve pinlere baglar.
+  // Servolari pinlere baglar; her attach sonucunu dogrular.
   bool begin(const Pins::ServoPin* pins = Pins::SERVO_PINS, uint8_t count = Pins::SERVO_COUNT);
 
   // Servoyu hedef aciya yumusak hareket ettirir.
