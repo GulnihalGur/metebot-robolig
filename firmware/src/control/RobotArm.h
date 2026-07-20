@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
-#include <communication/Joystick/Joystick.h>
-#include <control/ServoManager/ServoManager.h>
+#include <communication/Joystick.h>
+#include <control/ServoManager.h>
 
 // Joystick ile kol kontrol ayarlarini tutar.
 struct RobotArmConfig {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <drivers/ServoDriver/ServoDriver.h>
+#include <drivers/ServoDriver.h>
 
 // Robot kolundaki eklemleri belirtir.
 enum class ServoJoint : uint8_t {

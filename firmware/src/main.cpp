@@ -23,7 +23,7 @@
 #include "drivers/PowerManager.h"
 #include "drivers/RFID.h"
 #include "drivers/ServoDriver.h"
-#include "drivers/ServoManager.h"
+#include "control/ServoManager.h"
 #include "mission/Finish.h"
 #include "mission/MissionManager.h"
 #include "mission/Zipline.h"
@@ -190,14 +190,6 @@ static const char* errorCodeName(ErrorCode code) {
  */
 static const char* controlModeName(ControlMode mode) {
     return mode == ControlMode::DRIVE ? "DRIVE" : "ARM";
-}
-
-/**
- * @brief Bir BTS7960 kanalinin iki kontrol pininin de atanmis olup olmadigini
- *        kontrol eder. UNUSED_PIN bulunan bir modul baslatilmaz.
- */
-static bool pinsAssigned(const Pins::BtsPins& pins) {
-    return pins.rpwm != Pins::UNUSED_PIN && pins.lpwm != Pins::UNUSED_PIN;
 }
 
 /**

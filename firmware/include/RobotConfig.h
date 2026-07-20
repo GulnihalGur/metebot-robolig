@@ -22,7 +22,7 @@ namespace RobotConfig
 
     // Drive system
     constexpr bool USE_DIFFERENTIAL_DRIVE = true;
-    constexpr unsigned char DRIVE_MOTOR_COUNT = 4;
+    constexpr unsigned char DRIVE_MOTOR_COUNT = 6;
 
     // Mission configuration
     constexpr unsigned char CITY_COUNT = 5;
