@@ -314,6 +314,7 @@ static void printCommands() {
     Serial.println("  JOY,x,y,buttons");
     Serial.println("  JOY,x,y,twist,throttle,hat,buttons");
     Serial.println("  MODE,DRIVE | MODE,ARM | MODE?");
+    Serial.println("  ARM,HOME  (only in IDLE or MANUAL)");
     Serial.println("  STATE,IDLE | STATE,MANUAL | STATE,PICKUP");
     Serial.println("  STATE? | ERROR? | POWER? | RECOVER");
     Serial.println("  ZIP,EXTENDED | ZIP,POSITIONED | ZIP,SLID | ZIP,RETRACTED");
@@ -469,8 +470,13 @@ static void initializeServoSystem() {
         return;
     }
 
-    robotArm.moveHome();
+    // Guvenlik: Acilista robot kolu otomatik olarak home konumuna gitmez.
+    // Servo hornlari fiziksel konumla uyusmuyorsa otomatik hareket mekanik
+    // carpismaya, sikismaya ve yuksek akima neden olabilir.
     Serial.println("Servo system and RobotArm started.");
+    Serial.println("WARNING: Automatic arm home movement is disabled.");
+    Serial.println("Use ARM,HOME only after checking mechanical clearance.");
+    Serial.println("FIRST TEST: Disconnect servo horns/links and remove the load.");
 }
 
 /**
@@ -639,6 +645,41 @@ static bool canRecoverFromCurrentError() {
 }
 
 /**
+ * @brief Robot kolunu acik operator komutuyla guvenli sekilde home hedefine yollar.
+ *
+ * Acilista otomatik cagrilmaz. Yalnizca IDLE veya MANUAL durumunda, FailSafe
+ * aktif degilken ve servo sistemi hazirken calisir. Once surus durdurulur ve
+ * joystick kol kontrolu yeniden merkezleme gerektirecek sekilde kilitlenir.
+ */
+static bool requestArmHome() {
+    if (!Runtime::servoSystemAvailable || !robotArm.ready()) {
+        uartLink.sendError("ARM_NOT_AVAILABLE");
+        return true;
+    }
+
+    if (failSafe.isActive()) {
+        uartLink.sendError("ARM_HOME_BLOCKED_FAILSAFE");
+        return true;
+    }
+
+    const RobotState state = missionManager.currentState();
+    if (state != RobotState::IDLE && state != RobotState::MANUAL) {
+        uartLink.sendError(
+            String("ARM_HOME_BLOCKED_STATE,") + robotStateName(state)
+        );
+        return true;
+    }
+
+    motionController.stop();
+    robotArm.setActive(false);
+    Runtime::controlInputArmed = false;
+
+    robotArm.moveHome();
+    uartLink.sendOk("ARM,HOME");
+    return true;
+}
+
+/**
  * @brief RECOVER komutunu isler ve guvenli ise FailSafe oncesi duruma doner.
  */
 static bool handleRecoveryCommand() {
@@ -688,6 +729,7 @@ static bool handleTextCommand(const String& rawLine) {
     if (command == "MODE?") { reportControlMode(); return true; }
     if (command == "MODE,DRIVE") return setControlMode(ControlMode::DRIVE);
     if (command == "MODE,ARM") return setControlMode(ControlMode::ARM);
+    if (command == "ARM,HOME") return requestArmHome();
     if (command == "RECOVER") return handleRecoveryCommand();
 
     if (command == "ZIP,EXTENDED") {
