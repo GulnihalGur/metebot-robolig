@@ -6,7 +6,10 @@ RobotArm::RobotArm()
     _lastControlMs(0),
     _ready(false),
     _timedOut(true),
-    _active(false) {}
+    _active(false),
+    _baseAngleAccumulator(0),
+    _shoulderAngleAccumulator(0),
+    _elbowAngleAccumulator(0) {}
 
 bool RobotArm::begin(Joystick& joystick,
                      ServoManager& servoManager,
@@ -30,6 +33,7 @@ bool RobotArm::begin(Joystick& joystick,
   _lastControlMs = millis();
   _timedOut = true;
   _active = false;
+  resetAngleAccumulators();
   _ready = true;
 
   return true;
@@ -78,6 +82,7 @@ void RobotArm::setActive(bool activeValue) {
   _active = activeValue;
   _lastControlMs = millis();
   _timedOut = true;
+  resetAngleAccumulators();
 
   // Kol kontrolu kapanirken hedefleri mevcut acilarda tutar.
   if (!_active) {
@@ -92,12 +97,14 @@ bool RobotArm::active() const {
 void RobotArm::moveHome() {
   if (!_ready) return;
 
+  resetAngleAccumulators();
   _servoManager->moveHome();
 }
 
 void RobotArm::stop() {
   if (!_ready) return;
 
+  resetAngleAccumulators();
   _servoManager->stop();
 }
 
@@ -109,27 +116,57 @@ int16_t RobotArm::calculateAngleChange(
   int16_t axisPercent,
   uint16_t speedDegPerSec,
   uint32_t elapsedMs,
-  bool inverted
-) const {
-  if (axisPercent == 0 || elapsedMs == 0) return 0;
+  bool inverted,
+  int64_t& angleAccumulator
+) {
+  // Joystick merkeze dondugunde eski kesirli hareketi tasimaz.
+  if (axisPercent == 0) {
+    angleAccumulator = 0;
+    return 0;
+  }
+
+  if (elapsedMs == 0) return 0;
 
   int32_t direction = inverted ? -axisPercent : axisPercent;
 
-  // Yuzde, hiz ve gecen sureye gore aci hesaplar.
-  int32_t numerator =
-    direction *
-    static_cast<int32_t>(speedDegPerSec) *
-    static_cast<int32_t>(elapsedMs);
-
-  int16_t angleChange =
-    static_cast<int16_t>(numerator / 100000L);
-
-  // Dusuk hizlarda hareketin kaybolmasini engeller.
-  if (angleChange == 0) {
-    angleChange = direction > 0 ? 1 : -1;
+  // Yon degistiginde onceki yone ait kesirli hareketi temizler.
+  if ((angleAccumulator > 0 && direction < 0) ||
+      (angleAccumulator < 0 && direction > 0)) {
+    angleAccumulator = 0;
   }
 
-  return angleChange;
+  // 100000 birim 1 dereceyi temsil eder.
+  // int64_t kullanimi uzun surelerde carpma tasmasini engeller.
+  int64_t movementUnits =
+    static_cast<int64_t>(direction) *
+    static_cast<int64_t>(speedDegPerSec) *
+    static_cast<int64_t>(elapsedMs);
+
+  angleAccumulator += movementUnits;
+
+  // Birikim tam dereceye ulasmadiysa servo hedefini degistirmez.
+  if (angleAccumulator > -ANGLE_UNITS_PER_DEGREE &&
+      angleAccumulator < ANGLE_UNITS_PER_DEGREE) {
+    return 0;
+  }
+
+  int64_t wholeDegrees =
+    angleAccumulator / ANGLE_UNITS_PER_DEGREE;
+
+  // Uygulanan tam dereceleri cikarip yalnizca kesirli kalani saklar.
+  angleAccumulator %= ANGLE_UNITS_PER_DEGREE;
+
+  // Donus tipinin sinirlarini asan anormal gecikmeleri guvenli sinirlar.
+  if (wholeDegrees > INT16_MAX) return INT16_MAX;
+  if (wholeDegrees < INT16_MIN) return INT16_MIN;
+
+  return static_cast<int16_t>(wholeDegrees);
+}
+
+void RobotArm::resetAngleAccumulators() {
+  _baseAngleAccumulator = 0;
+  _shoulderAngleAccumulator = 0;
+  _elbowAngleAccumulator = 0;
 }
 
 uint16_t RobotArm::calculateControlSpeed(
@@ -163,7 +200,8 @@ void RobotArm::applyJoystick(
     packet.xPercent,
     controlSpeed,
     elapsedMs,
-    _config.invertBase
+    _config.invertBase,
+    _baseAngleAccumulator
   );
 
   // Y ekseni omuz servosunu kontrol eder.
@@ -171,7 +209,8 @@ void RobotArm::applyJoystick(
     packet.yPercent,
     controlSpeed,
     elapsedMs,
-    _config.invertShoulder
+    _config.invertShoulder,
+    _shoulderAngleAccumulator
   );
 
   // Twist ekseni dirsek servosunu kontrol eder.
@@ -179,7 +218,8 @@ void RobotArm::applyJoystick(
     packet.twistPercent,
     controlSpeed,
     elapsedMs,
-    _config.invertElbow
+    _config.invertElbow,
+    _elbowAngleAccumulator
   );
 
   if (baseChange != 0) {
