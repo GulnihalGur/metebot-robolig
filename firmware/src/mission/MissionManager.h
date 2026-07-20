@@ -75,6 +75,9 @@ public:
      */
     int8_t scanDeliveryItem();
 
+    // Son gercek RFID taramasinin ayrintili sonucunu dondurur.
+    RFIDReadStatus lastRfidReadStatus() const;
+
     /*
      * Pilot koliyi fiziksel olarak bıraktıktan sonra
      * ilgili slot kaydını siler.
@@ -154,6 +157,8 @@ private:
      * saklanıp saklanmadığını belirtir.
      */
     bool recoveryStateAvailable = false;
+
+    RFIDReadStatus rfidReadStatus = RFIDReadStatus::NO_TAG;
 
     void enterState(RobotState state);
     void updateState(RobotState state);
