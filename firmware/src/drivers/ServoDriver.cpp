@@ -4,26 +4,61 @@ ServoDriver::ServoDriver()
   : _count(0), _ready(false) {}
 
 bool ServoDriver::begin(const Pins::ServoPin* pins, uint8_t countValue) {
-  if (pins == nullptr) return false;
+  _ready = false;
 
-  _count = min<uint8_t>(countValue, MAX_SERVOS);
+  // Yeniden baslatma veya gecersiz ayar durumunda eski PWM cikislarini kapatir.
+  detachAll();
+
+  if (pins == nullptr || countValue == 0) {
+    _count = 0;
+    return false;
+  }
+
+  _count = min<uint8_t>(countValue, SERVO_COUNT);
+
   ESP32PWM::allocateTimer(0);
   ESP32PWM::allocateTimer(1);
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
 
-  for (uint8_t i = 0; i < _count; i++) {
+  // Tum durum alanlarini attach denemesinden once hazirlar.
+  // Boylece hata halinde detachAll() guvenle cagrilabilir.
+  for (uint8_t i = 0; i < _count; ++i) {
     _servos[i].config = &pins[i];
     _servos[i].currentAngle = limitAngle(pins[i].startAngle, pins[i]);
     _servos[i].targetAngle = _servos[i].currentAngle;
     _servos[i].speedDegPerSec = 120;
     _servos[i].lastUpdateMs = millis();
     _servos[i].attached = false;
+  }
 
-    _servos[i].servo.setPeriodHertz(50);
-    _servos[i].servo.attach(pins[i].pin, 500, 2500);
-    _servos[i].attached = true;
-    _servos[i].servo.write(_servos[i].currentAngle);
+  for (uint8_t i = 0; i < _count; ++i) {
+    ServoState& state = _servos[i];
+
+    state.servo.setPeriodHertz(50);
+    const int channel = state.servo.attach(pins[i].pin, 500, 2500);
+
+    // Kutuphane surumleri kanal 0 konusunda farkli davranabildigi icin
+    // basari yalnizca kanal numarasina bakilarak belirlenmez. Negatif kanal
+    // veya attached() == false durumu baslatma hatasi kabul edilir.
+    if (channel < 0 || !state.servo.attached()) {
+      state.attached = false;
+      detachAll();
+      _ready = false;
+      return false;
+    }
+
+    state.attached = true;
+
+    // Baslangicta startAngle/home acisina zorunlu hareket komutu gonderilmez.
+    // Surucunun attach sonrasi tuttugu aci yazilim durumuna aktarilir.
+    const int attachedAngle = constrain(state.servo.read(), 0, 180);
+    state.currentAngle = limitAngle(
+      static_cast<uint8_t>(attachedAngle),
+      pins[i]
+    );
+    state.targetAngle = state.currentAngle;
+    state.lastUpdateMs = millis();
   }
 
   _ready = true;
@@ -31,7 +66,7 @@ bool ServoDriver::begin(const Pins::ServoPin* pins, uint8_t countValue) {
 }
 
 bool ServoDriver::moveTo(uint8_t index, uint8_t targetAngle, uint16_t speedDegPerSec) {
-  if (index >= _count || !_servos[index].attached) return false;
+  if (!_ready || index >= _count || !_servos[index].attached) return false;
 
   const Pins::ServoPin& cfg = *_servos[index].config;
   _servos[index].targetAngle = limitAngle(targetAngle, cfg);
@@ -40,7 +75,7 @@ bool ServoDriver::moveTo(uint8_t index, uint8_t targetAngle, uint16_t speedDegPe
 }
 
 bool ServoDriver::writeNow(uint8_t index, uint8_t angleValue) {
-  if (index >= _count || !_servos[index].attached) return false;
+  if (!_ready || index >= _count || !_servos[index].attached) return false;
 
   const Pins::ServoPin& cfg = *_servos[index].config;
   uint8_t safeAngle = limitAngle(angleValue, cfg);
@@ -59,12 +94,17 @@ bool ServoDriver::detach(uint8_t index) {
 }
 
 void ServoDriver::detachAll() {
-  for (uint8_t i = 0; i < _count; i++) {
-    detach(i);
+  for (uint8_t i = 0; i < _count; ++i) {
+    if (_servos[i].attached) {
+      _servos[i].servo.detach();
+      _servos[i].attached = false;
+    }
   }
 }
 
 void ServoDriver::update() {
+  if (!_ready) return;
+
   uint32_t now = millis();
 
   for (uint8_t i = 0; i < _count; i++) {
