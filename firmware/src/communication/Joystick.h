@@ -2,35 +2,16 @@
 
 #include <Arduino.h>
 #include <Pins.h>
-
-// Joystickten gelen verileri tutar.
-struct JoystickPacket {
-  int16_t xPercent;          // Sag sol ekseni
-  int16_t yPercent;          // Ileri geri ekseni
-  int16_t twistPercent;      // Sap cevirme ekseni
-  uint8_t throttlePercent;   // Gaz kolu yuzdesi
-  int16_t hatAngle;          // Hat switch acisi
-  uint32_t buttons;          // Buton bit maskesi
-  uint32_t timestampMs;      // Son paket zamani
-  bool valid;                // Paket gecerli mi
-};
-
-// Sol ve sag motor PWM degerlerini tutar.
-struct DifferentialOutput {
-  int16_t leftPwm;
-  int16_t rightPwm;
-};
+#include <Types.h>
 
 // Joystick verilerini ayristirir ve suruse cevirir.
 class Joystick {
 public:
   Joystick();
 
-  // Yeni format:
+  // format:
   // JOY,x,y,twist,throttle,hat,buttons
-  //
-  // Eski format:
-  // JOY,x,y,buttons
+
   bool parseLine(const String& line);
 
   // Sol ve sag motor PWM degerlerini hesaplar.
