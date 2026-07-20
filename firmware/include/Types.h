@@ -35,12 +35,20 @@ enum class City
     ELAZIG
 };
 
-struct JoystickData
-{
-    int x;
-    int y;
-    bool buttonPressed;
-    bool isConnected;
+struct DifferentialOutput {
+  int16_t leftPwm;
+  int16_t rightPwm;
+};
+
+struct JoystickPacket {
+  int16_t xPercent;          // Sag sol ekseni
+  int16_t yPercent;          // Ileri geri ekseni
+  int16_t twistPercent;      // Sap cevirme ekseni
+  uint8_t throttlePercent;   // Gaz kolu yuzdesi
+  int16_t hatAngle;          // Hat switch acisi
+  uint32_t buttons;          // Buton bit maskesi
+  uint32_t timestampMs;      // Son paket zamani
+  bool valid;                // Paket gecerli mi
 };
 
 struct SlotData
