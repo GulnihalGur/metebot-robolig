@@ -89,9 +89,13 @@ bool MissionManager::scanPickupItem(
         return false;
     }
 
-    if (!rfid.ready() ||
-        !slotManager.ready() ||
-        slotManager.full())
+    if (!rfid.ready())
+    {
+        rfidReadStatus = RFIDReadStatus::HARDWARE_ERROR;
+        return false;
+    }
+
+    if (!slotManager.ready() || slotManager.full())
     {
         return false;
     }
@@ -104,9 +108,13 @@ bool MissionManager::scanPickupItem(
         return false;
     }
 
-    const String uid = rfid.readUIDString();
+    String uid;
+    rfidReadStatus = rfid.readUIDString(
+        uid,
+        RFID::DEFAULT_READ_TIMEOUT_MS
+    );
 
-    if (uid.length() == 0)
+    if (rfidReadStatus != RFIDReadStatus::READ_SUCCESS)
     {
         return false;
     }
@@ -157,14 +165,24 @@ int8_t MissionManager::scanDeliveryItem()
         return SlotManager::INVALID_SLOT;
     }
 
-    if (!rfid.ready() || !slotManager.ready())
+    if (!rfid.ready())
+    {
+        rfidReadStatus = RFIDReadStatus::HARDWARE_ERROR;
+        return SlotManager::INVALID_SLOT;
+    }
+
+    if (!slotManager.ready())
     {
         return SlotManager::INVALID_SLOT;
     }
 
-    const String uid = rfid.readUIDString();
+    String uid;
+    rfidReadStatus = rfid.readUIDString(
+        uid,
+        RFID::DEFAULT_READ_TIMEOUT_MS
+    );
 
-    if (uid.length() == 0)
+    if (rfidReadStatus != RFIDReadStatus::READ_SUCCESS)
     {
         return SlotManager::INVALID_SLOT;
     }
@@ -174,6 +192,12 @@ int8_t MissionManager::scanDeliveryItem()
      * Bu aşamada herhangi bir slot kaydı silinmez.
      */
     return slotManager.findSlotByUID(uid);
+}
+
+
+RFIDReadStatus MissionManager::lastRfidReadStatus() const
+{
+    return rfidReadStatus;
 }
 
 
@@ -422,6 +446,7 @@ void MissionManager::resetMissionData()
 
     recoveryStateAvailable = false;
     stateBeforeFailSafe = RobotState::IDLE;
+    rfidReadStatus = RFIDReadStatus::NO_TAG;
 
     changeState(RobotState::IDLE);
 }
