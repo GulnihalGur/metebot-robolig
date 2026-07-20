@@ -58,11 +58,22 @@ private:
   bool _timedOut;
   bool _active;
 
+  // Her eksenin 1 dereceden kucuk hareketini kaybetmeden biriktirir.
+  int64_t _baseAngleAccumulator;
+  int64_t _shoulderAngleAccumulator;
+  int64_t _elbowAngleAccumulator;
+
+  static constexpr int64_t ANGLE_UNITS_PER_DEGREE = 100000LL;
+
   // Joystick yuzdesini aci degisimine cevirir.
   int16_t calculateAngleChange(int16_t axisPercent,
                                uint16_t speedDegPerSec,
                                uint32_t elapsedMs,
-                               bool inverted) const;
+                               bool inverted,
+                               int64_t& angleAccumulator);
+
+  // Bekleyen kesirli hareketleri temizler.
+  void resetAngleAccumulators();
 
   // Gaz koluna gore kontrol hizini hesaplar.
   uint16_t calculateControlSpeed(
