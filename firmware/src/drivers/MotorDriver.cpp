@@ -150,28 +150,51 @@ bool MotorDriver::stopChannel(uint8_t index) {
   return true;
 }
 
-// Sol taraftaki uc fiziksel BTS'nin ortak kontrol hattini ayarlar.
-bool MotorDriver::setLeftSide(int16_t leftSpeed) {
-  return setChannel(Pins::DRIVE_LEFT_INDEX, leftSpeed);
+// Sol on teker kanalini ayarlar.
+bool MotorDriver::setLeftFront(int16_t speed) {
+  return setChannel(Pins::DRIVE_LEFT_FRONT_INDEX, speed);
 }
 
-// Sag taraftaki uc fiziksel BTS'nin ortak kontrol hattini ayarlar.
-bool MotorDriver::setRightSide(int16_t rightSpeed) {
-  return setChannel(Pins::DRIVE_RIGHT_INDEX, rightSpeed);
+// Sol orta ve arka BTS'lerin ortak kontrol hattini ayarlar.
+bool MotorDriver::setLeftBogie(int16_t speed) {
+  return setChannel(Pins::DRIVE_LEFT_BOGIE_INDEX, speed);
 }
 
-// Sol ve sag motor hizlarini birlikte ayarlar.
+// Sag on teker kanalini ayarlar.
+bool MotorDriver::setRightFront(int16_t speed) {
+  return setChannel(Pins::DRIVE_RIGHT_FRONT_INDEX, speed);
+}
+
+// Sag orta ve arka BTS'lerin ortak kontrol hattini ayarlar.
+bool MotorDriver::setRightBogie(int16_t speed) {
+  return setChannel(Pins::DRIVE_RIGHT_BOGIE_INDEX, speed);
+}
+
+// Dort mantiksal surus grubunu ayri ayri surer.
+bool MotorDriver::setDriveGroupSpeeds(int16_t leftFrontSpeed,
+                                      int16_t leftBogieSpeed,
+                                      int16_t rightFrontSpeed,
+                                      int16_t rightBogieSpeed) {
+  bool leftFrontOk = setLeftFront(leftFrontSpeed);
+  bool leftBogieOk = setLeftBogie(leftBogieSpeed);
+  bool rightFrontOk = setRightFront(rightFrontSpeed);
+  bool rightBogieOk = setRightBogie(rightBogieSpeed);
+
+  return leftFrontOk && leftBogieOk && rightFrontOk && rightBogieOk;
+}
+
+// Mevcut diferansiyel surus algoritmasini korur.
+// Normal suruste ayni taraftaki on ve bogie grubuna ayni PWM uygulanir.
 bool MotorDriver::setDriveSpeeds(int16_t leftSpeed, int16_t rightSpeed) {
-  bool leftOk = setLeftSide(leftSpeed);
-  bool rightOk = setRightSide(rightSpeed);
-
-  return leftOk && rightOk;
+  return setDriveGroupSpeeds(leftSpeed, leftSpeed, rightSpeed, rightSpeed);
 }
 
-// Iki ortak kontrol hattini sifirlayarak alti surus motorunu durdurur.
+// Dort kontrol hattini sifirlayarak alti surus motorunu durdurur.
 void MotorDriver::stopDrive() {
-  stopChannel(Pins::DRIVE_LEFT_INDEX);
-  stopChannel(Pins::DRIVE_RIGHT_INDEX);
+  stopChannel(Pins::DRIVE_LEFT_FRONT_INDEX);
+  stopChannel(Pins::DRIVE_LEFT_BOGIE_INDEX);
+  stopChannel(Pins::DRIVE_RIGHT_FRONT_INDEX);
+  stopChannel(Pins::DRIVE_RIGHT_BOGIE_INDEX);
 }
 
 // Tum motor kanallarini durdurur.
