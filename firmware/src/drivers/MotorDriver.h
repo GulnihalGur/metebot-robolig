@@ -70,7 +70,7 @@ private:
   static uint8_t clampPwm(int16_t value);
 };
 
-// Sol ve sag ortak kontrol hatlarini yoneten iki mantiksal BTS7960 kanalini yonetir.
+// On tekerleri ayri, orta+arka bogie motorlarini ortak kontrol eden dort BTS kanalini yonetir.
 class MotorDriver {
 public:
   // Kullanilabilecek en fazla kanal sayisi.
@@ -87,13 +87,26 @@ public:
   // Tek bir motoru durdurur.
   bool stopChannel(uint8_t index);
 
-  // Sol taraftaki uc fiziksel BTS surucusunun ortak kontrol hattini surer.
-  bool setLeftSide(int16_t leftSpeed);
+  // Sol on teker kanalini surer.
+  bool setLeftFront(int16_t speed);
 
-  // Sag taraftaki uc fiziksel BTS surucusunun ortak kontrol hattini surer.
-  bool setRightSide(int16_t rightSpeed);
+  // Sol orta ve arka BTS'lerin ortak kontrol hattini surer.
+  bool setLeftBogie(int16_t speed);
 
-  // Sol ve sag tarafi farkli hizlarla surer.
+  // Sag on teker kanalini surer.
+  bool setRightFront(int16_t speed);
+
+  // Sag orta ve arka BTS'lerin ortak kontrol hattini surer.
+  bool setRightBogie(int16_t speed);
+
+  // Dort kontrol grubunu ayri PWM degerleriyle surer.
+  bool setDriveGroupSpeeds(int16_t leftFrontSpeed,
+                           int16_t leftBogieSpeed,
+                           int16_t rightFrontSpeed,
+                           int16_t rightBogieSpeed);
+
+  // Diferansiyel surus uyumlulugu icin ayni taraftaki on ve bogie grubuna
+  // ayni hiz degerini uygular.
   bool setDriveSpeeds(int16_t leftSpeed, int16_t rightSpeed);
 
   // Sadece surus motorlarini durdurur.
