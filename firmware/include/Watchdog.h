@@ -6,13 +6,29 @@
 class Watchdog
 {
 public:
-    void begin();
+    // Yazilimsal ve ESP32 Task Watchdog'u baslatir.
+    bool begin();
+
+    // Dongu basariyla tamamlandiginda iki watchdog'u besler.
     void feed();
-    bool hasTimedOut();
+
+    // Yazilimsal dongu gecikmesini kontrol eder.
+    bool hasTimedOut() const;
+
+    // Son basarili dongu zamanini dondurur.
     unsigned long getLastFeedTime() const;
 
+    // ESP32 Task Watchdog baslatildi mi?
+    bool hardwareReady() const;
+
 private:
-    unsigned long lastFeedTime;
+    unsigned long lastFeedTime = 0;
+
+    bool softwareReady = false;
+    bool taskWatchdogReady = false;
+
+    // ESP32 Task Watchdog'u baslatir.
+    bool beginTaskWatchdog();
 };
 
 #endif

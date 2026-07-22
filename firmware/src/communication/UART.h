@@ -6,30 +6,30 @@
 // UART uzerinden satir tabanli haberlesmeyi yonetir.
 class UARTLink {
 public:
-  // Kullanilacak seri haberlesme nesnesini alir.
   explicit UARTLink(Stream& stream = Serial);
 
-  // Seri haberlesmeyi verilen baud degeriyle baslatir.
   void begin(uint32_t baud = Pins::LINK_BAUD);
 
-  // Satir sonu \n olan komutu okur.
+  // Gelen satiri String olarak verir; dahili tampon sabittir.
   bool readLine(String& outLine);
 
-  // Normal mesaj gonderir.
   void sendLine(const String& line);
+  void sendLine(const char* line);
+  void sendLine(const char* first, const char* second);
 
-  // Basarili durum mesaji gonderir.
-  void sendOk(const String& message = "OK");
+  void sendOk(const String& message);
+  void sendOk(const char* message = "OK");
+  void sendOk(const char* first, const char* second);
 
-  // Hata mesaji gonderir.
   void sendError(const String& message);
+  void sendError(const char* message);
+  void sendError(const char* first, const char* second);
+  void sendError(const char* first, const String& second);
 
 private:
-  // Kullanilan seri haberlesme nesnesi.
+  static constexpr size_t BUFFER_SIZE = 96;
+
   Stream* _stream;
-
-  // Gelen karakterleri gecici olarak tutar.
-  String _buffer;
+  char _buffer[BUFFER_SIZE + 1];
+  size_t _bufferLength;
 };
-
-

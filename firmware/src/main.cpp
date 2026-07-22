@@ -235,7 +235,7 @@ static bool armControlInputWhenCentered() {
     }
 
     Runtime::controlInputArmed = true;
-    uartLink.sendOk(String("MODE_READY,") + controlModeName(Runtime::controlMode));
+    uartLink.sendOk("MODE_READY,", controlModeName(Runtime::controlMode));
     return true;
 }
 
@@ -526,17 +526,17 @@ static bool initializeRobotModules() {
 
 /** @brief Mevcut gorev durumunu UART uzerinden bildirir. */
 static void reportCurrentState() {
-    uartLink.sendLine(String("STATE,") + robotStateName(missionManager.currentState()));
+    uartLink.sendLine("STATE,", robotStateName(missionManager.currentState()));
 }
 
 /** @brief Kayitli son hata kodunu UART uzerinden bildirir. */
 static void reportCurrentError() {
-    uartLink.sendLine(String("ERROR,") + errorCodeName(errorManager.getCurrentError()));
+    uartLink.sendLine("ERROR,", errorCodeName(errorManager.getCurrentError()));
 }
 
 /** @brief Aktif DRIVE/ARM modunu UART uzerinden bildirir. */
 static void reportControlMode() {
-    uartLink.sendLine(String("MODE,") + controlModeName(Runtime::controlMode));
+    uartLink.sendLine("MODE,", controlModeName(Runtime::controlMode));
 }
 
 /**
@@ -548,11 +548,15 @@ static void reportPowerStatus() {
         return;
     }
 
-    uartLink.sendLine(
-        String("POWER,") +
-        String(powerManager.readBatteryVoltage(), 2) + "V," +
-        String(powerManager.estimate3sPercent()) + "%"
+    char message[40];
+    snprintf(
+        message,
+        sizeof(message),
+        "POWER,%.2fV,%u%%",
+        powerManager.readBatteryVoltage(),
+        powerManager.estimate3sPercent()
     );
+    uartLink.sendLine(message);
 }
 
 /**
@@ -565,15 +569,19 @@ static bool requestAndReportState(RobotState requestedState) {
     }
 
     if (!missionManager.requestState(requestedState)) {
-        uartLink.sendError(
-            String("STATE_TRANSITION,") +
-            robotStateName(missionManager.currentState()) + "," +
+        char message[64];
+        snprintf(
+            message,
+            sizeof(message),
+            "STATE_TRANSITION,%s,%s",
+            robotStateName(missionManager.currentState()),
             robotStateName(requestedState)
         );
+        uartLink.sendError(message);
         return false;
     }
 
-    uartLink.sendOk(String("STATE,") + robotStateName(requestedState));
+    uartLink.sendOk("STATE,", robotStateName(requestedState));
     return true;
 }
 
@@ -604,9 +612,14 @@ static bool setControlMode(ControlMode newMode) {
     Runtime::controlMode = newMode;
     Runtime::controlInputArmed = false;
 
-    uartLink.sendOk(
-        String("MODE,") + controlModeName(newMode) + ",CENTER_JOYSTICK"
+    char message[48];
+    snprintf(
+        message,
+        sizeof(message),
+        "MODE,%s,CENTER_JOYSTICK",
+        controlModeName(newMode)
     );
+    uartLink.sendOk(message);
 
     if (oled.ready()) {
         oled.status(
@@ -665,7 +678,8 @@ static bool requestArmHome() {
     const RobotState state = missionManager.currentState();
     if (state != RobotState::IDLE && state != RobotState::MANUAL) {
         uartLink.sendError(
-            String("ARM_HOME_BLOCKED_STATE,") + robotStateName(state)
+            "ARM_HOME_BLOCKED_STATE,",
+            robotStateName(state)
         );
         return true;
     }
@@ -689,7 +703,7 @@ static bool handleRecoveryCommand() {
     }
 
     if (!canRecoverFromCurrentError()) {
-        uartLink.sendError(String("RECOVERY_BLOCKED,") + errorCodeName(errorManager.getCurrentError()));
+        uartLink.sendError("RECOVERY_BLOCKED,", errorCodeName(errorManager.getCurrentError()));
         return true;
     }
 
@@ -707,7 +721,7 @@ static bool handleRecoveryCommand() {
     Runtime::ziplineDriveInputArmed = false;
     robotArm.setActive(false);
 
-    uartLink.sendOk(String("RECOVERED,") + robotStateName(missionManager.currentState()));
+    uartLink.sendOk("RECOVERED,", robotStateName(missionManager.currentState()));
     return true;
 }
 
@@ -762,7 +776,7 @@ static bool handleTextCommand(const String& rawLine) {
  * Guvenlik acisindan once fiziksel hareketler durdurulur, sonra hata kaydedilir
  * ve MissionManager FailSafe'e gecirilir.
  */
-static void enterFailSafe(ErrorCode error, const String& message) {
+static void enterFailSafe(ErrorCode error, const char* message) {
     motionController.stop();
     robotArm.setActive(false);
     Runtime::controlInputArmed = false;
@@ -798,10 +812,9 @@ static void triggerLowBatteryFailSafe(float voltage) {
     }
 
     Runtime::lowBatteryFailSafeTriggered = true;
-    enterFailSafe(
-        ErrorCode::LOW_BATTERY,
-        String("LOW_BATTERY,") + String(voltage, 2) + "V"
-    );
+    char message[32];
+    snprintf(message, sizeof(message), "LOW_BATTERY,%.2fV", voltage);
+    enterFailSafe(ErrorCode::LOW_BATTERY, message);
 }
 
 /**
@@ -872,7 +885,7 @@ static void applyJoystickControl() {
 
             if (missionManager.confirmCurrentZiplineStep()) {
                 uartLink.sendOk(
-                    String("ZIPLINE_CONFIRM,") +
+                    "ZIPLINE_CONFIRM,",
                     ziplineStateName(missionManager.currentZiplineState())
                 );
             } else {
@@ -982,7 +995,7 @@ static void handleCommunication() {
         }
 
         if (!handleTextCommand(line)) {
-            uartLink.sendError(String("UNKNOWN_COMMAND,") + line);
+            uartLink.sendError("UNKNOWN_COMMAND,", line);
         }
     }
 
@@ -1052,9 +1065,23 @@ static void updateDisplay() {
         return;
     }
 
-    const String thirdLine = Runtime::powerMonitoringAvailable && powerManager.ready()
-        ? String(powerManager.readBatteryVoltage(), 2) + " V"
-        : String("MODE: ") + controlModeName(Runtime::controlMode);
+    char thirdLine[24];
+
+    if (Runtime::powerMonitoringAvailable && powerManager.ready()) {
+        snprintf(
+            thirdLine,
+            sizeof(thirdLine),
+            "%.2f V",
+            powerManager.readBatteryVoltage()
+        );
+    } else {
+        snprintf(
+            thirdLine,
+            sizeof(thirdLine),
+            "MODE: %s",
+            controlModeName(Runtime::controlMode)
+        );
+    }
 
     oled.status("ROBOT STATE", robotStateName(state), thirdLine);
 }
@@ -1121,9 +1148,27 @@ void setup() {
 
     printProjectInformation();
 
-    if (RobotConfig::ENABLE_WATCHDOG) {
-        watchdog.begin();
-        Serial.println("Watchdog started.");
+    if (RobotConfig::ENABLE_WATCHDOG)
+    {
+        const bool hardwareWatchdogStarted =
+            watchdog.begin();
+
+        Serial.println(
+            F("Software watchdog started.")
+        );
+
+        if (hardwareWatchdogStarted)
+        {
+            Serial.println(
+                F("ESP32 Task Watchdog started.")
+            );
+        }
+        else
+        {
+            Serial.println(
+                F("WARNING: ESP32 Task Watchdog could not start.")
+            );
+        }
     }
 
     bool systemReady = initializeRobotModules();
@@ -1146,17 +1191,29 @@ void setup() {
 //   4. Mission state machine
 //   5. Fiziksel kontrol cikislari
 // =============================================================================
-void loop() {
-    if (RobotConfig::ENABLE_WATCHDOG) {
-        // Loop uzun sure ilerleyemediyse hareketleri durdur ve FailSafe'e gec.
-        if (watchdog.hasTimedOut()) {
-            enterFailSafe(ErrorCode::UNKNOWN_ERROR, "WATCHDOG_TIMEOUT");
+void loop()
+{
+    if (RobotConfig::ENABLE_WATCHDOG)
+    {
+        // Onceki loop normalden uzun surduyse FailSafe'e gec.
+        if (watchdog.hasTimedOut())
+        {
+            enterFailSafe(
+                ErrorCode::UNKNOWN_ERROR,
+                "SOFTWARE_WATCHDOG_TIMEOUT"
+            );
         }
-        watchdog.feed();
     }
 
+    // Ana robot islemleri.
     handleCommunication();
     taskScheduler.update();
     missionManager.update();
     updateControlOutputs();
+
+    if (RobotConfig::ENABLE_WATCHDOG)
+    {
+        // Yalnizca tum loop basariyla bittiyse besle.
+        watchdog.feed();
+    }
 }

@@ -15,7 +15,6 @@
 #include "Zipline.h"
 #include "Finish.h"
 
-
 class MissionManager
 {
 public:
@@ -30,69 +29,49 @@ public:
         Finish& finish
     );
 
-    // Görev sistemini başlatır.
+    // Gorev sistemini baslatir.
     void begin();
 
-    // loop() içerisinde sürekli çağrılır.
+    // Ana dongude surekli cagrilir.
     void update();
 
-    /*
-     * Robotun görev durumunu değiştirmek için kullanılır.
-     * Geçiş izinli değilse false döndürür.
-     */
+    // Ana gorev durumunu degistirir.
     bool requestState(RobotState newState);
-
 
     // =====================================================
     // PICKUP
     // =====================================================
 
-    /*
-     * RFID ile koli UID'sini okur ve şehir bilgisiyle
-     * uygun slota kaydeder.
-     *
-     * preferredSlot verilmezse ilk boş slot kullanılır.
-     */
+    // RFID ile okunan yuku slota kaydeder.
     bool scanPickupItem(
-        const String& city,
-        int8_t preferredSlot = SlotManager::INVALID_SLOT
+        City city,
+        int8_t preferredSlot =
+            SlotManager::INVALID_SLOT
     );
 
-    /*
-     * Bütün slotlar doluysa PICKUP görevini tamamlar
-     * ve DELIVERY durumuna geçer.
-     */
+    // Slotlar doluysa DELIVERY durumuna gecer.
     bool confirmPickupCompleted();
-
 
     // =====================================================
     // DELIVERY
     // =====================================================
 
-    /*
-     * RFID ile koli okur ve kolinin bulunduğu slotu döndürür.
-     * Slot kaydı bu fonksiyon içinde silinmez.
-     */
+    // Okunan UID'nin bulundugu slotu dondurur.
     int8_t scanDeliveryItem();
 
-    // Son gercek RFID taramasinin ayrintili sonucunu dondurur.
+    // Son RFID okuma sonucunu dondurur.
     RFIDReadStatus lastRfidReadStatus() const;
 
-    /*
-     * Pilot koliyi fiziksel olarak bıraktıktan sonra
-     * ilgili slot kaydını siler.
-     */
-    bool confirmDeliveryItemReleased(uint8_t slotIndex);
+    // Fiziksel teslimattan sonra slotu temizler.
+    bool confirmDeliveryItemReleased(
+        uint8_t slotIndex
+    );
 
-    /*
-     * Bütün slotlar boşsa DELIVERY görevini tamamlar
-     * ve ZIPLINE durumuna geçer.
-     */
+    // Slotlar bossa ZIPLINE durumuna gecer.
     bool confirmDeliveryCompleted();
 
-
     // =====================================================
-    // ZIPLINE PILOT ONAYLARI
+    // ZIPLINE ONAYLARI
     // =====================================================
 
     void confirmZiplineExtensionCompleted();
@@ -100,33 +79,24 @@ public:
     void confirmZiplineSlideCompleted();
     void confirmZiplineRetractionCompleted();
 
-    /*
-     * Tek pilot onay tusuyla mevcut zipline alt adimini
-     * yalnizca bir kez ilerletir.
-     */
+    // Mevcut zipline adimini bir kez ilerletir.
     bool confirmCurrentZiplineStep();
 
     // Mevcut zipline alt durumunu dondurur.
     Zipline::State currentZiplineState() const;
 
-
     // =====================================================
     // SAFETY / RECOVERY
     // =====================================================
 
-    // Robotu FailSafe durumuna geçirir.
+    // Robotu FailSafe durumuna gecirir.
     void activateFailSafe();
 
-    /*
-     * FailSafe'den görev ve slot verilerini silmeden çıkar.
-     *
-     * Robot FailSafe durumunda değilse false döndürür.
-     */
+    // Gorev verilerini silmeden kurtarma yapar.
     bool recoverFromFailSafe();
 
-    // Mevcut ana görev durumunu döndürür.
+    // Ana gorev durumunu dondurur.
     RobotState currentState() const;
-
 
 private:
     StateMachine& stateMachine;
@@ -141,24 +111,16 @@ private:
     Zipline& zipline;
     Finish& finish;
 
-    /*
-     * Yalnızca sistem ilk başlatılırken kullanılır.
-     * UART veya dış modüller tarafından çağrılamaz.
-     */
+    // Yalnizca sistem acilisinda tum gorevi temizler.
     void resetMissionData();
 
-    /*
-     * FailSafe öncesindeki görev durumunu saklar.
-     */
-    RobotState stateBeforeFailSafe = RobotState::IDLE;
+    RobotState stateBeforeFailSafe =
+        RobotState::IDLE;
 
-    /*
-     * Geri dönülebilecek geçerli bir görev durumu
-     * saklanıp saklanmadığını belirtir.
-     */
     bool recoveryStateAvailable = false;
 
-    RFIDReadStatus rfidReadStatus = RFIDReadStatus::NO_TAG;
+    RFIDReadStatus rfidReadStatus =
+        RFIDReadStatus::NO_TAG;
 
     void enterState(RobotState state);
     void updateState(RobotState state);

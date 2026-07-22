@@ -235,23 +235,21 @@ String RFID::uidToString(
     uint8_t uidLength
 )
 {
+    static constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
+
     String result;
+    result.reserve(uidLength == 0 ? 0 : (uidLength * 3) - 1);
 
     for (uint8_t i = 0; i < uidLength; i++)
     {
-        if (uid[i] < 0x10)
-        {
-            result += "0";
-        }
-
-        result += String(uid[i], HEX);
+        result += HEX_DIGITS[(uid[i] >> 4) & 0x0F];
+        result += HEX_DIGITS[uid[i] & 0x0F];
 
         if (i + 1 < uidLength)
         {
-            result += ":";
+            result += ':';
         }
     }
 
-    result.toUpperCase();
     return result;
 }

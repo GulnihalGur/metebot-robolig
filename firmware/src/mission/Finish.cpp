@@ -88,11 +88,16 @@ void Finish::executeFinishActions() {
   }
 
   if (_oled != nullptr && _oled->ready()) {
-    String slotText = "";
+    char slotText[32] = "";
 
     if (_slotManager != nullptr) {
-      slotText = "Dolu slot: " + String(static_cast<unsigned int>(_slotManager->occupiedCount())) +
-                 "/" + String(static_cast<unsigned int>(_slotManager->slotCount()));
+      snprintf(
+        slotText,
+        sizeof(slotText),
+        "Dolu slot: %u/%u",
+        static_cast<unsigned int>(_slotManager->occupiedCount()),
+        static_cast<unsigned int>(_slotManager->slotCount())
+      );
     }
 
     _oled->status("GOREV TAMAMLANDI", slotText, "Robot durduruldu");

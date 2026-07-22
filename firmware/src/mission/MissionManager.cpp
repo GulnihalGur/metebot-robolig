@@ -1,6 +1,5 @@
 #include "MissionManager.h"
 
-
 MissionManager::MissionManager(
     StateMachine& stateMachine,
     FailSafe& failSafe,
@@ -22,29 +21,24 @@ MissionManager::MissionManager(
 {
 }
 
-
 void MissionManager::begin()
 {
     stateMachine.begin();
     zipline.begin();
 
-    /*
-     * Tam görev sıfırlaması yalnızca sistem açılışında yapılır.
-     */
+    // Tam sifirlama yalnizca acilista yapilir.
     resetMissionData();
 }
 
-
 void MissionManager::update()
 {
-    /*
-     * FailSafe başka bir modül tarafından doğrudan aktif edilmişse
-     * robotun mevcut görev durumu kurtarma için saklanır.
-     */
+    // Disaridan aktif edilen FailSafe'i yakalar.
     if (failSafe.isActive() &&
         !stateMachine.isState(RobotState::FAIL_SAFE))
     {
-        stateBeforeFailSafe = stateMachine.getCurrentState();
+        stateBeforeFailSafe =
+            stateMachine.getCurrentState();
+
         recoveryStateAvailable = true;
 
         changeState(RobotState::FAIL_SAFE);
@@ -53,8 +47,9 @@ void MissionManager::update()
     updateState(stateMachine.getCurrentState());
 }
 
-
-bool MissionManager::requestState(RobotState newState)
+bool MissionManager::requestState(
+    RobotState newState
+)
 {
     const RobotState current =
         stateMachine.getCurrentState();
@@ -74,13 +69,12 @@ bool MissionManager::requestState(RobotState newState)
     return true;
 }
 
-
 // =====================================================
 // PICKUP
 // =====================================================
 
 bool MissionManager::scanPickupItem(
-    const String& city,
+    City city,
     int8_t preferredSlot
 )
 {
@@ -91,37 +85,38 @@ bool MissionManager::scanPickupItem(
 
     if (!rfid.ready())
     {
-        rfidReadStatus = RFIDReadStatus::HARDWARE_ERROR;
+        rfidReadStatus =
+            RFIDReadStatus::HARDWARE_ERROR;
+
         return false;
     }
 
-    if (!slotManager.ready() || slotManager.full())
+    if (!slotManager.ready() ||
+        slotManager.full())
     {
         return false;
     }
 
-    String cleanCity = city;
-    cleanCity.trim();
-
-    if (cleanCity.length() == 0)
+    // Gecersiz sehir kaydedilemez.
+    if (city == City::NONE)
     {
         return false;
     }
 
     String uid;
+
     rfidReadStatus = rfid.readUIDString(
         uid,
         RFID::DEFAULT_READ_TIMEOUT_MS
     );
 
-    if (rfidReadStatus != RFIDReadStatus::READ_SUCCESS)
+    if (rfidReadStatus !=
+        RFIDReadStatus::READ_SUCCESS)
     {
         return false;
     }
 
-    /*
-     * Aynı RFID UID ikinci kez kaydedilemez.
-     */
+    // Ayni UID ikinci kez eklenemez.
     if (slotManager.isUIDStored(uid))
     {
         return false;
@@ -129,11 +124,10 @@ bool MissionManager::scanPickupItem(
 
     return slotManager.placeItem(
         uid,
-        cleanCity,
+        city,
         preferredSlot
     );
 }
-
 
 bool MissionManager::confirmPickupCompleted()
 {
@@ -142,9 +136,6 @@ bool MissionManager::confirmPickupCompleted()
         return false;
     }
 
-    /*
-     * Pickup görevi yalnızca bütün slotlar doluysa tamamlanır.
-     */
     if (!slotManager.full())
     {
         return false;
@@ -153,21 +144,23 @@ bool MissionManager::confirmPickupCompleted()
     return requestState(RobotState::DELIVERY);
 }
 
-
 // =====================================================
 // DELIVERY
 // =====================================================
 
 int8_t MissionManager::scanDeliveryItem()
 {
-    if (!stateMachine.isState(RobotState::DELIVERY))
+    if (!stateMachine.isState(
+            RobotState::DELIVERY))
     {
         return SlotManager::INVALID_SLOT;
     }
 
     if (!rfid.ready())
     {
-        rfidReadStatus = RFIDReadStatus::HARDWARE_ERROR;
+        rfidReadStatus =
+            RFIDReadStatus::HARDWARE_ERROR;
+
         return SlotManager::INVALID_SLOT;
     }
 
@@ -177,35 +170,34 @@ int8_t MissionManager::scanDeliveryItem()
     }
 
     String uid;
+
     rfidReadStatus = rfid.readUIDString(
         uid,
         RFID::DEFAULT_READ_TIMEOUT_MS
     );
 
-    if (rfidReadStatus != RFIDReadStatus::READ_SUCCESS)
+    if (rfidReadStatus !=
+        RFIDReadStatus::READ_SUCCESS)
     {
         return SlotManager::INVALID_SLOT;
     }
 
-    /*
-     * RFID ile okunan kolinin bulunduğu slot döndürülür.
-     * Bu aşamada herhangi bir slot kaydı silinmez.
-     */
+    // Kayit silinmeden ilgili slot bulunur.
     return slotManager.findSlotByUID(uid);
 }
 
-
-RFIDReadStatus MissionManager::lastRfidReadStatus() const
+RFIDReadStatus
+MissionManager::lastRfidReadStatus() const
 {
     return rfidReadStatus;
 }
-
 
 bool MissionManager::confirmDeliveryItemReleased(
     uint8_t slotIndex
 )
 {
-    if (!stateMachine.isState(RobotState::DELIVERY))
+    if (!stateMachine.isState(
+            RobotState::DELIVERY))
     {
         return false;
     }
@@ -215,32 +207,23 @@ bool MissionManager::confirmDeliveryItemReleased(
         return false;
     }
 
-    /*
-     * Geçersiz veya boş slot teslim edilmiş sayılamaz.
-     */
+    // Bos veya gecersiz slot teslim edilemez.
     if (!slotManager.isOccupied(slotIndex))
     {
         return false;
     }
 
-    /*
-     * Pilot fiziksel teslimatı onayladıktan sonra
-     * yalnızca ilgili slotun kaydı silinir.
-     */
     return slotManager.removeItem(slotIndex);
 }
 
-
 bool MissionManager::confirmDeliveryCompleted()
 {
-    if (!stateMachine.isState(RobotState::DELIVERY))
+    if (!stateMachine.isState(
+            RobotState::DELIVERY))
     {
         return false;
     }
 
-    /*
-     * Slotlarda koli kalmışsa DELIVERY tamamlanamaz.
-     */
     if (!slotManager.isEmpty())
     {
         return false;
@@ -249,12 +232,12 @@ bool MissionManager::confirmDeliveryCompleted()
     return requestState(RobotState::ZIPLINE);
 }
 
-
 // =====================================================
-// ZIPLINE PILOT ONAYLARI
+// ZIPLINE ONAYLARI
 // =====================================================
 
-void MissionManager::confirmZiplineExtensionCompleted()
+void MissionManager::
+confirmZiplineExtensionCompleted()
 {
     if (stateMachine.isState(RobotState::ZIPLINE))
     {
@@ -262,8 +245,8 @@ void MissionManager::confirmZiplineExtensionCompleted()
     }
 }
 
-
-void MissionManager::confirmZiplinePositioningCompleted()
+void MissionManager::
+confirmZiplinePositioningCompleted()
 {
     if (stateMachine.isState(RobotState::ZIPLINE))
     {
@@ -271,8 +254,8 @@ void MissionManager::confirmZiplinePositioningCompleted()
     }
 }
 
-
-void MissionManager::confirmZiplineSlideCompleted()
+void MissionManager::
+confirmZiplineSlideCompleted()
 {
     if (stateMachine.isState(RobotState::ZIPLINE))
     {
@@ -280,15 +263,14 @@ void MissionManager::confirmZiplineSlideCompleted()
     }
 }
 
-
-void MissionManager::confirmZiplineRetractionCompleted()
+void MissionManager::
+confirmZiplineRetractionCompleted()
 {
     if (stateMachine.isState(RobotState::ZIPLINE))
     {
         zipline.confirmRetractionCompleted();
     }
 }
-
 
 bool MissionManager::confirmCurrentZiplineStep()
 {
@@ -297,29 +279,30 @@ bool MissionManager::confirmCurrentZiplineStep()
         return false;
     }
 
-    /*
-     * Switch yalnizca bir case calistirir. Boylece tek tus basisi
-     * birden fazla zipline adimini arka arkaya gecemez.
-     */
+    // Tek tus basisi yalnizca bir adim ilerletir.
     switch (zipline.getState())
     {
         case Zipline::State::EXTENDING:
             zipline.confirmExtensionCompleted();
+
             return zipline.getState() ==
                    Zipline::State::POSITIONING;
 
         case Zipline::State::POSITIONING:
             zipline.confirmPositioningCompleted();
+
             return zipline.getState() ==
                    Zipline::State::SLIDING;
 
         case Zipline::State::SLIDING:
             zipline.confirmSlideCompleted();
+
             return zipline.getState() ==
                    Zipline::State::RETRACTING;
 
         case Zipline::State::RETRACTING:
             zipline.confirmRetractionCompleted();
+
             return zipline.getState() ==
                    Zipline::State::COMPLETED;
 
@@ -328,12 +311,11 @@ bool MissionManager::confirmCurrentZiplineStep()
     }
 }
 
-
-Zipline::State MissionManager::currentZiplineState() const
+Zipline::State
+MissionManager::currentZiplineState() const
 {
     return zipline.getState();
 }
-
 
 // =====================================================
 // SAFETY / RECOVERY
@@ -341,78 +323,58 @@ Zipline::State MissionManager::currentZiplineState() const
 
 void MissionManager::activateFailSafe()
 {
-    /*
-     * FailSafe'e ilk kez girerken robotun mevcut görev durumu
-     * saklanır. Robot zaten FAIL_SAFE durumundaysa kayıt ezilmez.
-     */
-    if (!stateMachine.isState(RobotState::FAIL_SAFE))
+    if (!stateMachine.isState(
+            RobotState::FAIL_SAFE))
     {
-        stateBeforeFailSafe = stateMachine.getCurrentState();
+        stateBeforeFailSafe =
+            stateMachine.getCurrentState();
+
         recoveryStateAvailable = true;
     }
 
     failSafe.activate();
 
-    if (!stateMachine.isState(RobotState::FAIL_SAFE))
+    if (!stateMachine.isState(
+            RobotState::FAIL_SAFE))
     {
         changeState(RobotState::FAIL_SAFE);
     }
 }
 
-
 bool MissionManager::recoverFromFailSafe()
 {
-    /*
-     * Robot FailSafe durumunda değilse kurtarma yapılamaz.
-     */
     if (!failSafe.isActive() ||
-        !stateMachine.isState(RobotState::FAIL_SAFE))
+        !stateMachine.isState(
+            RobotState::FAIL_SAFE))
     {
         return false;
     }
 
-    /*
-     * Kurtarma sırasında robot kesinlikle hareket etmemelidir.
-     */
+    // Kurtarma sirasinda hareket kapatilir.
     motionController.stop();
     linearActuator.stop();
 
-    /*
-     * Varsayılan güvenli dönüş durumu IDLE'dır.
-     */
-    RobotState recoveryState = RobotState::IDLE;
+    RobotState recoveryState =
+        RobotState::IDLE;
 
     if (recoveryStateAvailable)
     {
         recoveryState = stateBeforeFailSafe;
     }
 
-    /*
-     * Zipline sırasında FailSafe oluşursa zipline otomatik
-     * olarak devam ettirilmez.
-     *
-     * Robot DELIVERY aşamasına döndürülür ve pilotun
-     * zipline geçişini yeniden başlatması beklenir.
-     */
+    // Zipline otomatik devam ettirilmez.
     if (recoveryState == RobotState::ZIPLINE)
     {
         zipline.reset();
         recoveryState = RobotState::DELIVERY;
     }
 
-    /*
-     * FAIL_SAFE veya FINISH durumuna otomatik dönüş yapılmaz.
-     */
     if (recoveryState == RobotState::FAIL_SAFE ||
         recoveryState == RobotState::FINISH)
     {
         recoveryState = RobotState::IDLE;
     }
 
-    /*
-     * FailSafe bayrağı kaldırılır.
-     * Slot ve RFID görev verileri kesinlikle silinmez.
-     */
     failSafe.deactivate();
     motionController.clearEmergencyStop();
 
@@ -424,22 +386,15 @@ bool MissionManager::recoverFromFailSafe()
     return true;
 }
 
-
 void MissionManager::resetMissionData()
 {
-    /*
-     * Bu fonksiyon yalnızca robot ilk açılırken çağrılır.
-     * Yarış sırasında veya UART komutuyla çağrılamaz.
-     */
     failSafe.deactivate();
 
     motionController.clearEmergencyStop();
     motionController.stop();
     linearActuator.stop();
 
-    /*
-     * Tam görev temizliği yalnızca burada yapılır.
-     */
+    // Tum gorev verileri acilista temizlenir.
     slotManager.clearAll();
     zipline.reset();
     finish.reset();
@@ -451,12 +406,10 @@ void MissionManager::resetMissionData()
     changeState(RobotState::IDLE);
 }
 
-
 RobotState MissionManager::currentState() const
 {
     return stateMachine.getCurrentState();
 }
-
 
 // =====================================================
 // STATE MANAGEMENT
@@ -472,19 +425,7 @@ void MissionManager::enterState(RobotState state)
             break;
 
         case RobotState::MANUAL:
-            if (!failSafe.isActive())
-            {
-                motionController.clearEmergencyStop();
-            }
-            break;
-
         case RobotState::PICKUP:
-            if (!failSafe.isActive())
-            {
-                motionController.clearEmergencyStop();
-            }
-            break;
-
         case RobotState::DELIVERY:
             if (!failSafe.isActive())
             {
@@ -508,7 +449,6 @@ void MissionManager::enterState(RobotState state)
     }
 }
 
-
 void MissionManager::updateState(RobotState state)
 {
     switch (state)
@@ -521,10 +461,6 @@ void MissionManager::updateState(RobotState state)
         case RobotState::MANUAL:
         case RobotState::PICKUP:
         case RobotState::DELIVERY:
-            /*
-             * Joystick/UART katmanı sürüş hedeflerini verir.
-             * MotionController motor çıkışlarını günceller.
-             */
             motionController.update();
             break;
 
@@ -552,7 +488,6 @@ void MissionManager::updateState(RobotState state)
     }
 }
 
-
 void MissionManager::exitState(RobotState state)
 {
     switch (state)
@@ -567,10 +502,6 @@ void MissionManager::exitState(RobotState state)
             break;
 
         case RobotState::ZIPLINE:
-            /*
-             * Zipline başarıyla tamamlandıysa tamamlanma durumu korunur.
-             * Başka nedenle çıkılıyorsa güvenli biçimde iptal edilir.
-             */
             if (!zipline.isCompleted())
             {
                 zipline.cancel();
@@ -586,15 +517,12 @@ void MissionManager::exitState(RobotState state)
     }
 }
 
-
 bool MissionManager::canTransition(
     RobotState from,
     RobotState to
 ) const
 {
-    /*
-     * Her görev durumundan FAIL_SAFE'e geçilebilir.
-     */
+    // Her durumdan FailSafe'e gecilebilir.
     if (to == RobotState::FAIL_SAFE)
     {
         return true;
@@ -627,19 +555,16 @@ bool MissionManager::canTransition(
             return to == RobotState::IDLE;
 
         case RobotState::FAIL_SAFE:
-            /*
-             * Normal requestState() ile FailSafe'den çıkılmaz.
-             * FailSafe çıkışı yalnızca recoverFromFailSafe()
-             * üzerinden yapılır.
-             */
+            // Cikis sadece recovery ile yapilir.
             return false;
     }
 
     return false;
 }
 
-
-void MissionManager::changeState(RobotState newState)
+void MissionManager::changeState(
+    RobotState newState
+)
 {
     const RobotState oldState =
         stateMachine.getCurrentState();

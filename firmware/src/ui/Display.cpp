@@ -1,60 +1,73 @@
 #include "Display.h"
 
-// Kullanilacak OLED nesnesini kaydeder.
 Display::Display(OLED& oled)
   : _oled(&oled) {}
 
-// Donanimlarin baslangic durumunu ekranda gosterir.
 void Display::boot(bool motorOk, bool servoOk, bool rfidOk, bool powerOk) {
-  _oled->status(
-    String("Motor:") + (motorOk ? "OK" : "ERR"),
-    String("Servo:") + (servoOk ? "OK" : "ERR") +
-    " RFID:" + (rfidOk ? "OK" : "ERR"),
-    String("Power:") + (powerOk ? "OK" : "ADC yok")
+  char line1[24];
+  char line2[32];
+  char line3[24];
+
+  snprintf(line1, sizeof(line1), "Motor:%s", motorOk ? "OK" : "ERR");
+  snprintf(
+    line2,
+    sizeof(line2),
+    "Servo:%s RFID:%s",
+    servoOk ? "OK" : "ERR",
+    rfidOk ? "OK" : "ERR"
   );
+  snprintf(line3, sizeof(line3), "Power:%s", powerOk ? "OK" : "ADC yok");
+
+  _oled->status(line1, line2, line3);
 }
 
-// Joystick ve motor PWM degerlerini ekranda gosterir.
 void Display::joystick(const JoystickPacket& packet,
                        int16_t leftPwm,
                        int16_t rightPwm) {
-  // Ekran basligini ayarlar.
+  char axisLine[28];
+  char motorLine[28];
+  char buttonLine[24];
+
+  snprintf(
+    axisLine,
+    sizeof(axisLine),
+    "X:%d Y:%d",
+    packet.xPercent,
+    packet.yPercent
+  );
+
+  snprintf(
+    motorLine,
+    sizeof(motorLine),
+    "L:%d R:%d",
+    leftPwm,
+    rightPwm
+  );
+
+  snprintf(
+    buttonLine,
+    sizeof(buttonLine),
+    "Btn:%lu",
+    static_cast<unsigned long>(packet.buttons)
+  );
+
   _oled->title("JOYSTICK");
-
-  // Joystick X ve Y yuzdelerini yazar.
-  _oled->printLine(
-    2,
-    "X:" + String(packet.xPercent) +
-    " Y:" + String(packet.yPercent)
-  );
-
-  // Sol ve sag motor PWM degerlerini yazar.
-  _oled->printLine(
-    3,
-    "L:" + String(leftPwm) +
-    " R:" + String(rightPwm)
-  );
-
-  // Basili buton bilgisini yazar.
-  _oled->printLine(4, "Btn:" + String(packet.buttons));
-
-  // Bilgileri fiziksel ekrana aktarir.
+  _oled->printLine(2, axisLine);
+  _oled->printLine(3, motorLine);
+  _oled->printLine(4, buttonLine);
   _oled->show();
 }
 
-// Okunan RFID UID bilgisini gosterir.
 void Display::rfid(const String& uid) {
   _oled->uid(uid);
 }
 
-// Lineer aktuator durumunu gosterir.
 void Display::actuator(const String& state) {
   _oled->status("Actuator", state);
 }
 
-// Fail-safe nedenini uyari olarak gosterir.
 void Display::failSafe(const String& reason) {
-  _oled->warning("FAILSAFE " + reason);
+  char message[48];
+  snprintf(message, sizeof(message), "FAILSAFE %s", reason.c_str());
+  _oled->warning(message);
 }
-
-

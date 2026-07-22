@@ -27,34 +27,25 @@ bool SlotManager::begin(uint8_t slotCountValue)
 
 bool SlotManager::placeItem(
     const String& uid,
-    const String& city,
+    City city,
     int8_t preferredSlot
 )
 {
-    if (!_ready)
+    if (!_ready || city == City::NONE)
     {
         return false;
     }
 
-    String cleanUID = normalizeUID(uid);
+    const String cleanUID = normalizeUID(uid);
 
-    String cleanCity = city;
-    cleanCity.trim();
-
-    // Bos UID veya bos sehir bilgisi kabul edilmez.
-    if (cleanUID.isEmpty() || cleanCity.isEmpty())
+    // Bos UID kaydedilemez.
+    if (cleanUID.isEmpty())
     {
         return false;
     }
 
-    // Ayni koli iki kez kaydedilemez.
-    if (isUIDStored(cleanUID))
-    {
-        return false;
-    }
-
-    // Tum slotlar doluysa yeni koli eklenemez.
-    if (full())
+    // Ayni UID iki kez eklenemez.
+    if (isUIDStored(cleanUID) || full())
     {
         return false;
     }
@@ -68,7 +59,8 @@ bool SlotManager::placeItem(
             return false;
         }
 
-        uint8_t index = static_cast<uint8_t>(preferredSlot);
+        const uint8_t index =
+            static_cast<uint8_t>(preferredSlot);
 
         if (!validIndex(index) || _slots[index].occupied)
         {
@@ -92,7 +84,7 @@ bool SlotManager::placeItem(
 
     selected.occupied = true;
     selected.uid = cleanUID;
-    selected.city = cleanCity;
+    selected.city = city;
 
     _occupiedCount++;
     _lastChangedSlot = targetSlot;
@@ -114,7 +106,7 @@ bool SlotManager::removeItem(uint8_t slotIndex)
 
     _slots[slotIndex].occupied = false;
     _slots[slotIndex].uid = "";
-    _slots[slotIndex].city = "";
+    _slots[slotIndex].city = City::NONE;
 
     if (_occupiedCount > 0)
     {
@@ -129,16 +121,14 @@ bool SlotManager::removeItem(uint8_t slotIndex)
 
 bool SlotManager::removeByUID(const String& uid)
 {
-    int8_t index = findSlotByUID(uid);
+    const int8_t index = findSlotByUID(uid);
 
     if (index == INVALID_SLOT)
     {
         return false;
     }
 
-    return removeItem(
-        static_cast<uint8_t>(index)
-    );
+    return removeItem(static_cast<uint8_t>(index));
 }
 
 void SlotManager::clearAll()
@@ -147,7 +137,7 @@ void SlotManager::clearAll()
     {
         _slots[i].occupied = false;
         _slots[i].uid = "";
-        _slots[i].city = "";
+        _slots[i].city = City::NONE;
     }
 
     _occupiedCount = 0;
@@ -181,7 +171,7 @@ int8_t SlotManager::findSlotByUID(
         return INVALID_SLOT;
     }
 
-    String cleanUID = normalizeUID(uid);
+    const String cleanUID = normalizeUID(uid);
 
     if (cleanUID.isEmpty())
     {
@@ -200,19 +190,9 @@ int8_t SlotManager::findSlotByUID(
     return INVALID_SLOT;
 }
 
-int8_t SlotManager::findSlotByCity(
-    const String& city
-) const
+int8_t SlotManager::findSlotByCity(City city) const
 {
-    if (!_ready)
-    {
-        return INVALID_SLOT;
-    }
-
-    String cleanCity = city;
-    cleanCity.trim();
-
-    if (cleanCity.isEmpty())
+    if (!_ready || city == City::NONE)
     {
         return INVALID_SLOT;
     }
@@ -220,7 +200,7 @@ int8_t SlotManager::findSlotByCity(
     for (uint8_t i = 0; i < _slotCount; i++)
     {
         if (_slots[i].occupied &&
-            _slots[i].city.equalsIgnoreCase(cleanCity))
+            _slots[i].city == city)
         {
             return static_cast<int8_t>(i);
         }

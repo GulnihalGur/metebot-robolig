@@ -1,66 +1,90 @@
 #include "UART.h"
 
-// Kullanilacak seri haberlesme nesnesini kaydeder.
 UARTLink::UARTLink(Stream& stream)
-  : _stream(&stream), _buffer("") {}
+  : _stream(&stream), _buffer{0}, _bufferLength(0) {}
 
-// Seri haberlesmeyi baslatir.
 void UARTLink::begin(uint32_t baud) {
-  // Yalnizca ana Serial portuysa baud ayari yapar.
   if (&Serial == _stream) {
     Serial.begin(baud);
     delay(100);
   }
 }
 
-// UART uzerinden bir satir okumaya calisir.
 bool UARTLink::readLine(String& outLine) {
-  // Gelen tum karakterleri sirayla okur.
   while (_stream->available() > 0) {
-    char c = static_cast<char>(_stream->read());
+    const char c = static_cast<char>(_stream->read());
 
-    // Satir basi karakterini yok sayar.
     if (c == '\r') continue;
 
-    // Satir sonu gelince mesaji tamamlar.
     if (c == '\n') {
+      _buffer[_bufferLength] = '\0';
       outLine = _buffer;
       outLine.trim();
-      _buffer = "";
-
-      // Bos olmayan satir icin true dondurur.
-      return outLine.length() > 0;
+      _bufferLength = 0;
+      _buffer[0] = '\0';
+      return !outLine.isEmpty();
     }
 
-    // Tampon dolu degilse karakteri ekler.
-    if (_buffer.length() < 96) {
-      _buffer += c;
+    if (_bufferLength < BUFFER_SIZE) {
+      _buffer[_bufferLength++] = c;
+      _buffer[_bufferLength] = '\0';
     } else {
-      // Cok uzun mesajda tamponu temizler.
-      _buffer = "";
+      _bufferLength = 0;
+      _buffer[0] = '\0';
       sendError("UART_LINE_TOO_LONG");
     }
   }
 
-  // Tam satir okunmadiysa false dondurur.
   return false;
 }
 
-// Mesaji satir sonuyla birlikte gonderir.
 void UARTLink::sendLine(const String& line) {
   _stream->println(line);
 }
 
-// Basarili durum mesaji gonderir.
+void UARTLink::sendLine(const char* line) {
+  _stream->println(line);
+}
+
+void UARTLink::sendLine(const char* first, const char* second) {
+  _stream->print(first);
+  _stream->println(second);
+}
+
 void UARTLink::sendOk(const String& message) {
-  _stream->print("OK,");
+  _stream->print(F("OK,"));
   _stream->println(message);
 }
 
-// Hata mesaji gonderir.
+void UARTLink::sendOk(const char* message) {
+  _stream->print(F("OK,"));
+  _stream->println(message);
+}
+
+void UARTLink::sendOk(const char* first, const char* second) {
+  _stream->print(F("OK,"));
+  _stream->print(first);
+  _stream->println(second);
+}
+
 void UARTLink::sendError(const String& message) {
-  _stream->print("ERR,");
+  _stream->print(F("ERR,"));
   _stream->println(message);
 }
 
+void UARTLink::sendError(const char* message) {
+  _stream->print(F("ERR,"));
+  _stream->println(message);
+}
 
+void UARTLink::sendError(const char* first, const char* second) {
+  _stream->print(F("ERR,"));
+  _stream->print(first);
+  _stream->println(second);
+}
+
+void UARTLink::sendError(const char* first, const String& second) {
+  _stream->print(F("ERR,"));
+  _stream->print(first);
+  _stream->println(second);
+}
