@@ -15,6 +15,7 @@ static constexpr int8_t UNUSED_PIN = -1;
 // D15 dahili GPKEY butonuna baglidir ve bu projede kullanilmaz.
 // D9 dahili RGB LED'e baglidir ve bu projede kullanilmaz.
 // D2/D3 yukleme ve terminal UART hatti oldugu icin RFID'ye ayrilmamistir.
+// D8 SD kart hatti ile cakisma riski nedeniyle bos birakilmistir.
 // -----------------------------------------------------------------------------
 
 // OLED / I2C
@@ -28,7 +29,6 @@ static constexpr uint16_t OLED_HEIGHT = 64;
 // PN532 RFID / UART
 // PN532 TX -> Deneyap A0 (RFID_RX)
 // PN532 RX -> Deneyap A1 (RFID_TX)
-// A0 ve A1, Deneyap Kart 1A v2'de dijital giris/cikis olarak kullanilabilir.
 static constexpr int8_t RFID_RX = A0;
 static constexpr int8_t RFID_TX = A1;
 static constexpr uint32_t RFID_BAUD = 115200;
@@ -61,14 +61,19 @@ struct BtsPins {
 static constexpr uint8_t TOTAL_BTS7960_COUNT = 8;
 static constexpr uint8_t PHYSICAL_DRIVE_BTS_COUNT = 6;
 
-// Alti fiziksel surus BTS'si korunur, fakat iki mantiksal kanal kullanilir.
-// Sol taraftaki uc BTS ayni RPWM/LPWM hatlarini kullanir.
-// Sag taraftaki uc BTS ayni RPWM/LPWM hatlarini kullanir.
-// BTS motor cikislari (M+ / M-) ortaklastirilmaz.
-static constexpr uint8_t BTS_COUNT = 2;
+// Surus sistemi dort mantiksal kontrol grubuna ayrilir:
+// 1) sol on teker, 2) sol orta+arka bogie,
+// 3) sag on teker, 4) sag orta+arka bogie.
+//
+// Orta ve arka motorlarin BTS kontrol girisleri ortaklastirilir.
+// Her motor kendi BTS7960 surucusunu ve kendi M+/M- cikisini kullanmaya devam eder.
+// BTS motor cikislari birbirine baglanmaz.
+static constexpr uint8_t BTS_COUNT = 4;
 static constexpr BtsPins BTS_PINS[BTS_COUNT] = {
-  {"left_drive_shared_control",  D0,  D1,  false},
-  {"right_drive_shared_control", D12, D13, false}
+  {"left_front",        D0,  D1,  false},
+  {"left_bogie_shared", A2,  A3,  false},
+  {"right_front",       D12, D13, false},
+  {"right_bogie_shared",A5,  A6,  false}
 };
 
 // 7. BTS7960 lineer aktuator icin kullanilir.
@@ -87,15 +92,14 @@ static constexpr BtsPins SPARE_BTS8_PINS = {
   false
 };
 
-// Ortak kontrol nedeniyle yon tersleme taraf bazindadir.
-// Tek bir motor ters donerse o motorun kendi BTS cikisindaki M+ ve M-
-// kablolari fiziksel olarak yer degistirilmelidir.
-static constexpr uint8_t DRIVE_LEFT_INDEX = 0;
-static constexpr uint8_t DRIVE_RIGHT_INDEX = 1;
+// Mantiksal surus kanal indeksleri.
+static constexpr uint8_t DRIVE_LEFT_FRONT_INDEX = 0;
+static constexpr uint8_t DRIVE_LEFT_BOGIE_INDEX = 1;
+static constexpr uint8_t DRIVE_RIGHT_FRONT_INDEX = 2;
+static constexpr uint8_t DRIVE_RIGHT_BOGIE_INDEX = 3;
 
 // Link / joystick haberlesmesi
 // Joystick verisi PC'den USB seri portu uzerinden gelir.
-// Bu nedenle ayrica fiziksel RX/TX pini kullanilmaz.
 static constexpr int8_t LINK_RX = UNUSED_PIN;
 static constexpr int8_t LINK_TX = UNUSED_PIN;
 static constexpr uint32_t LINK_BAUD = 115200;
