@@ -150,32 +150,14 @@ bool MotorDriver::stopChannel(uint8_t index) {
   return true;
 }
 
-// Bir motor grubuna ayni hizi uygular.
-bool MotorDriver::setGroup(const uint8_t* indices, uint8_t size, int16_t speed) {
-  bool ok = true;
-
-  for (uint8_t i = 0; i < size; i++) {
-    ok = setChannel(indices[i], speed) && ok;
-  }
-
-  return ok;
-}
-
-// Bir motor grubunu durdurur.
-void MotorDriver::stopGroup(const uint8_t* indices, uint8_t size) {
-  for (uint8_t i = 0; i < size; i++) {
-    stopChannel(indices[i]);
-  }
-}
-
-// Sol taraftaki uc motorun hizini ayarlar.
+// Sol taraftaki uc fiziksel BTS'nin ortak kontrol hattini ayarlar.
 bool MotorDriver::setLeftSide(int16_t leftSpeed) {
-  return setGroup(Pins::DRIVE_LEFT_INDICES, 3, leftSpeed);
+  return setChannel(Pins::DRIVE_LEFT_INDEX, leftSpeed);
 }
 
-// Sag taraftaki uc motorun hizini ayarlar.
+// Sag taraftaki uc fiziksel BTS'nin ortak kontrol hattini ayarlar.
 bool MotorDriver::setRightSide(int16_t rightSpeed) {
-  return setGroup(Pins::DRIVE_RIGHT_INDICES, 3, rightSpeed);
+  return setChannel(Pins::DRIVE_RIGHT_INDEX, rightSpeed);
 }
 
 // Sol ve sag motor hizlarini birlikte ayarlar.
@@ -186,10 +168,10 @@ bool MotorDriver::setDriveSpeeds(int16_t leftSpeed, int16_t rightSpeed) {
   return leftOk && rightOk;
 }
 
-// Alti surus motorunu durdurur.
+// Iki ortak kontrol hattini sifirlayarak alti surus motorunu durdurur.
 void MotorDriver::stopDrive() {
-  stopGroup(Pins::DRIVE_LEFT_INDICES, 3);
-  stopGroup(Pins::DRIVE_RIGHT_INDICES, 3);
+  stopChannel(Pins::DRIVE_LEFT_INDEX);
+  stopChannel(Pins::DRIVE_RIGHT_INDEX);
 }
 
 // Tum motor kanallarini durdurur.
