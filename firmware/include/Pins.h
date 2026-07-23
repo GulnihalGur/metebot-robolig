@@ -27,10 +27,10 @@ static constexpr uint16_t OLED_WIDTH = 128;
 static constexpr uint16_t OLED_HEIGHT = 64;
 
 // PN532 RFID / UART
-// PN532 TX -> Deneyap A0 (RFID_RX)
-// PN532 RX -> Deneyap A1 (RFID_TX)
-static constexpr int8_t RFID_RX = A0;
-static constexpr int8_t RFID_TX = A1;
+// PN532 TX -> Deneyap A0 (RFID_TX)
+// PN532 RX -> Deneyap A1 (RFID_RX)
+static constexpr int8_t RFID_TX = A0;
+static constexpr int8_t RFID_RX = A1;
 static constexpr uint32_t RFID_BAUD = 115200;
 
 // Servo PWM pinleri
