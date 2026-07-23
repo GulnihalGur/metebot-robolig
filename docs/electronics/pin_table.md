@@ -31,8 +31,8 @@ Toplam fiziksel sürüş BTS sayısı **6**, mantıksal kontrol grubu sayısı *
 | Ek servo 3 | PWM | SCK / D5 | SPI kullanılmıyorsa servo pini |
 | OLED | SDA | SDA / D10 | I2C veri |
 | OLED | SCL | SCL / D11 | I2C saat |
-| PN532 | PN532 TX → kart RX | A0 | `RFID_RX` |
-| PN532 | PN532 RX ← kart TX | A1 | `RFID_TX` |
+| PN532 | PN532 TX → kart RX | RX / D3| `RFID_RX` |
+| PN532 | PN532 RX ← kart TX | TX / D2 | `RFID_TX` |
 | Joystick bağlantısı | USB seri | Fiziksel pin yok | 115200 baud |
 | Batarya ölçümü | ADC | Atanmadı | `UNUSED_PIN` |
 | BTS8 | RPWM/LPWM | Atanmadı | Yedek sürücü |
@@ -41,7 +41,6 @@ Toplam fiziksel sürüş BTS sayısı **6**, mantıksal kontrol grubu sayısı *
 
 | Pin | Neden |
 |---|---|
-| D2 / D3 | Programlama ve terminal UART hattı |
 | D9 | Kart üzerindeki RGB LED ile ilişkili |
 | D15 | GPKEY / manuel yükleme butonu ile ilişkili |
 | D8 | SD kart hattı ile olası çakışmayı önlemek için ayrıldı |
