@@ -14,7 +14,6 @@ static constexpr int8_t UNUSED_PIN = -1;
 //
 // D15 dahili GPKEY butonuna baglidir ve bu projede kullanilmaz.
 // D9 dahili RGB LED'e baglidir ve bu projede kullanilmaz.
-// D2/D3 yukleme ve terminal UART hatti oldugu icin RFID'ye ayrilmamistir.
 // D8 SD kart hatti ile cakisma riski nedeniyle bos birakilmistir.
 // -----------------------------------------------------------------------------
 
@@ -27,10 +26,10 @@ static constexpr uint16_t OLED_WIDTH = 128;
 static constexpr uint16_t OLED_HEIGHT = 64;
 
 // PN532 RFID / UART
-// PN532 TX -> Deneyap A0 (RFID_TX)
-// PN532 RX -> Deneyap A1 (RFID_RX)
-static constexpr int8_t RFID_TX = A0;
-static constexpr int8_t RFID_RX = A1;
+// PN532 TX -> Deneyap RX (RFID_RX) D3
+// PN532 RX -> Deneyap TX (RFID_TX) D2
+static constexpr int8_t RFID_TX = RX; // fiziksel pin 28 yani D3
+static constexpr int8_t RFID_RX = TX; // fiziksel pin 29 yani D2
 static constexpr uint32_t RFID_BAUD = 115200;
 
 // Servo PWM pinleri
