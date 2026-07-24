@@ -192,33 +192,11 @@ Batarya tam dolu kabulü:
 
 Aşağıdaki konular çözülmeden ilgili testler PASS yapılamaz:
 
-## 7.1 Lineer aktüatör pinleri
-
-`Pins::LINEAR_ACTUATOR_PINS` değerleri henüz atanmamıştır:
-
-Bu nedenle lineer aktüatör ve gerçek zipline testleri şu an BLOCKED durumundadır.
-
-## 7.2 Batarya ADC pini
+## 7.1 Batarya ADC pini
 
 `Pins::BATTERY_ADC` değeri henüz atanmamıştır:
 
 Bu nedenle gerçek batarya ölçümü ve düşük batarya FailSafe testi şu an BLOCKED durumundadır.
-
-## 7.3 Pin doğrulaması
-
-`Pins.h` içerisindeki bütün pin numaraları Deneyap Kart 1A v2’nin gerçek GPIO tablosuyla karşılaştırılmalıdır.
-
-Özellikle aşağıdaki pinler kart şeması üzerinden doğrulanmadan donanım testi yapılmamalıdır:
-
-```text
-GPIO 24
-GPIO 25
-GPIO 26
-GPIO 28
-GPIO 29
-GPIO 30
-GPIO 31
-```
 
 ---
 
