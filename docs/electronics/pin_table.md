@@ -12,10 +12,10 @@
 
 | Mantıksal grup | Fiziksel BTS | RPWM | LPWM | Açıklama |
 |---|---:|---|---|---|
-| Sol ön | Sol ön BTS | A0 | A1 | Ön teker bağımsız kontrol edilir. |
-| Sol bogie | Sol orta + sol arka BTS | A2 | A3 | İki BTS'nin kontrol girişleri paraleldir; motor çıkışları ayrı kalır. |
-| Sağ ön | Sağ ön BTS | A4 | A5 | Ön teker bağımsız kontrol edilir. |
-| Sağ bogie | Sağ orta + sağ arka BTS | A6 | A7 | İki BTS'nin kontrol girişleri paraleldir; motor çıkışları ayrı kalır. |
+| Sol ön | Sol ön BTS | A1 | A2 | Ön teker bağımsız kontrol edilir. |
+| Sol bogie | Sol orta + sol arka BTS | A3 | A4 | İki BTS'nin kontrol girişleri paraleldir; motor çıkışları ayrı kalır. |
+| Sağ ön | Sağ ön BTS | A5 | A6 | Ön teker bağımsız kontrol edilir. |
+| Sağ bogie | Sağ orta + sağ arka BTS | A7 | D14 | İki BTS'nin kontrol girişleri paraleldir; motor çıkışları ayrı kalır. |
 
 Toplam fiziksel sürüş BTS sayısı **6**, mantıksal kontrol grubu sayısı **4**, kullanılan sürüş kontrol pini sayısı **8**'dir.
 
@@ -34,7 +34,7 @@ Toplam fiziksel sürüş BTS sayısı **6**, mantıksal kontrol grubu sayısı *
 | PN532 | PN532 TX → kart RX | RX / D3 | `RFID_RX` |
 | PN532 | PN532 RX ← kart TX | TX / D2 | `RFID_TX` |
 | Joystick bağlantısı | USB seri | Fiziksel pin yok | 115200 baud |
-| Batarya ölçümü | ADC | D14 | Batarya ADC pini |
+| Batarya ölçümü | ADC | A0 | Batarya ADC pini |
 | BTS8 | RPWM/LPWM | Atanmadı | Yedek sürücü |
 
 ## Bilerek kullanılmayan veya sakınılan pinler
