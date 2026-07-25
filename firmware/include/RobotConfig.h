@@ -7,6 +7,12 @@ namespace RobotConfig
     constexpr bool USE_OLED = true;
     constexpr bool USE_RFID = true;
     constexpr bool USE_JOYSTICK = true;
+    constexpr bool USE_WIFI_JOYSTICK = true;
+
+    // PC, Deneyap'in olusturdugu bu Wi-Fi agina baglanir.
+    constexpr const char* WIFI_AP_SSID = "METEBOT";
+    constexpr const char* WIFI_AP_PASSWORD = "metebot123";
+    constexpr unsigned short JOYSTICK_UDP_PORT = 4210;
     constexpr bool USE_SERVO_SYSTEM = true;
     constexpr bool USE_LINEAR_ACTUATOR = true;
     constexpr bool USE_POWER_MONITORING = true;

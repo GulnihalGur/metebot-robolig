@@ -7,7 +7,7 @@ main.cpp
   ├─ MissionManager / StateMachine
   ├─ MotionController / RobotArm / SlotManager
   ├─ MotorDriver / ServoDriver / RFID / OLED / LinearActuator
-  └─ UART / Joystick / FailSafe / Watchdog
+  └─ WiFiJoystickLink / UART / Joystick / FailSafe / Watchdog
 ```
 
 ## Sürüş mimarisi
@@ -46,3 +46,20 @@ Gelecekte engel tırmanma kontrolü eklenirse `setDriveGroupSpeeds()` kullanıla
 ## Bağımlılık yönü
 
 Üst seviye modüller alt seviye sürücülere bağımlıdır; donanım sürücüleri görev mantığına bağımlı olmamalıdır. Pin bilgileri yalnızca `Pins.h`, ayarlanabilir davranış sabitleri `RobotConfig.h` veya `AppConfig` içinde tutulur.
+
+
+## Kablosuz joystick veri yolu
+
+```text
+USB joystick
+   ↓
+PC / pygame
+   ↓  Wi-Fi UDP: JOY,x,y,twist,throttle,hat,buttons
+WiFiJoystickLink
+   ↓
+Joystick::parseLine()
+   ↓
+MotionController veya RobotArm
+```
+
+Deneyap Kart erisim noktasi olarak calisir. USB seri port kod yukleme, diagnostik ve yedek metin komutlari icin korunur. UDP paketleri cevap beklemeden gonderilir; guvenlik kart tarafindaki joystick zaman asimi ile saglanir.

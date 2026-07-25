@@ -11,6 +11,7 @@
 
 #include "communication/Joystick.h"
 #include "communication/UART.h"
+#include "communication/WiFiJoystickLink.h"
 #include "control/MotionController.h"
 #include "control/RobotArm.h"
 #include "control/SlotManager.h"
@@ -51,7 +52,8 @@ constexpr JointConfig ARM_JOINTS[ServoManager::JOINT_COUNT] = {
     {0, 0, 180, 90, 60},
     {1, 0, 180, 90, 60},
     {2, 0, 180, 90, 60},
-    {3, 0, 180, 90, 90}
+    {3, 0, 180, 90, 60},
+    {4, 0, 180, 90, 90}
 };
 
 constexpr RobotArmConfig ARM_CONFIG = {
@@ -62,6 +64,7 @@ constexpr RobotArmConfig ARM_CONFIG = {
     90,
     Constants::JoystickButtons::GRIPPER_OPEN,
     Constants::JoystickButtons::GRIPPER_CLOSE,
+    false,
     false,
     false,
     false
@@ -99,6 +102,7 @@ TaskScheduler taskScheduler;
 
 // Haberlesme katmani
 UARTLink uartLink(Serial);
+WiFiJoystickLink wifiJoystickLink;
 Joystick joystick;
 
 // Donanim suruculeri
@@ -989,6 +993,15 @@ static void applyJoystickControl() {
  */
 static void handleCommunication() {
     String line;
+
+    // Normal joystick kontrolu PC'den Wi-Fi/UDP ile gelir.
+    while (RobotConfig::USE_WIFI_JOYSTICK && wifiJoystickLink.readLine(line)) {
+        if (RobotConfig::USE_JOYSTICK && joystick.parseLine(line)) {
+            applyJoystickControl();
+        }
+    }
+
+    // USB seri port test, diagnostik ve yedek metin komutlari icin korunur.
     while (uartLink.readLine(line)) {
         if (RobotConfig::USE_JOYSTICK && joystick.parseLine(line)) {
             applyJoystickControl();
@@ -1148,6 +1161,25 @@ bool RobotApplication::begin() {
     delay(300);
 
     printProjectInformation();
+
+    if (RobotConfig::USE_WIFI_JOYSTICK) {
+        const bool wifiStarted = wifiJoystickLink.begin(
+            RobotConfig::WIFI_AP_SSID,
+            RobotConfig::WIFI_AP_PASSWORD,
+            RobotConfig::JOYSTICK_UDP_PORT
+        );
+
+        if (wifiStarted) {
+            Serial.print("Joystick Wi-Fi started. SSID: ");
+            Serial.println(RobotConfig::WIFI_AP_SSID);
+            Serial.print("Robot IP: ");
+            Serial.println(wifiJoystickLink.localIp());
+            Serial.print("UDP port: ");
+            Serial.println(RobotConfig::JOYSTICK_UDP_PORT);
+        } else {
+            Serial.println("ERROR: Joystick Wi-Fi could not start.");
+        }
+    }
 
     if (RobotConfig::ENABLE_WATCHDOG)
     {

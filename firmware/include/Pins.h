@@ -41,13 +41,15 @@ struct ServoPin {
   uint8_t startAngle;
 };
 
-static constexpr uint8_t SERVO_COUNT = 4;
+static constexpr uint8_t SERVO_COUNT = 5;
 static constexpr ServoPin SERVO_PINS[SERVO_COUNT] = {
-  {"main_gripper", D4, 0, 180, 90},
-  {"extra_1",      MOSI, 0, 180, 90},  // MOSI = D7
-  {"extra_2",      MISO, 0, 180, 90},  // MISO = D6
-  {"extra_3",      SCK,  0, 180, 90}   // SCK  = D5
+  {"base",     D4,   0, 180, 90},
+  {"shoulder", MOSI, 0, 180, 90},  // MOSI = D7
+  {"elbow",    MISO, 0, 180, 90},  // MISO = D6
+  {"wrist",    D12,  0, 180, 90},
+  {"gripper",  SCK,  0, 180, 90}   // SCK  = D5
 };
+
 
 // BTS7960 kontrol pinleri
 struct BtsPins {
@@ -97,8 +99,8 @@ static constexpr uint8_t DRIVE_LEFT_BOGIE_INDEX = 1;
 static constexpr uint8_t DRIVE_RIGHT_FRONT_INDEX = 2;
 static constexpr uint8_t DRIVE_RIGHT_BOGIE_INDEX = 3;
 
-// Link / joystick haberlesmesi
-// Joystick verisi PC'den USB seri portu uzerinden gelir.
+// USB seri port yalnizca kod yukleme, hata ayiklama ve yedek komutlar icindir.
+// Joystick verisi normal calismada PC'den Wi-Fi/UDP ile gelir.
 static constexpr int8_t LINK_RX = UNUSED_PIN;
 static constexpr int8_t LINK_TX = UNUSED_PIN;
 static constexpr uint32_t LINK_BAUD = 115200;

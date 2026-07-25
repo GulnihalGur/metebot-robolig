@@ -774,6 +774,7 @@ Gripper open: buton 0
 Gripper close: buton 1
 Mode toggle: buton 2
 Zipline confirm: buton 3
+Wrist kontrolu: hat switch yukari/asagi
 ```
 
 Buton 2’nin bit maskesi:
@@ -2431,3 +2432,28 @@ METEBOT yazılımı robot üzerinde kullanıma hazır kabul edilmeden önce:
 13. Test edilen yazılım sürümü Git commit numarasıyla kayıtlı olmalıdır.
 
 Bu kriterlerden biri sağlanmıyorsa robot yarışmaya hazır kabul edilmemelidir.
+
+
+## TP-ARM-WRIST-001 — Bilek servo hat switch kontrol testi
+
+Ön koşullar:
+
+- Kontrol modu `ARM` olmalıdır.
+- Bilek servosu D12 sinyal pinine bağlanmalıdır.
+- Buton 4, bit maskesinde indeks 4 olduğu için değeri `16`dır.
+
+Adımlar:
+
+1. Buton bırakılmış paket gönder: `JOY,0,0,0,50,-1,0`
+2. Buton 4'e bas: `JOY,0,0,0,50,-1,16`
+3. Butonu bırak: `JOY,0,0,0,50,-1,0`
+4. Buton 4'e yeniden bas: `JOY,0,0,0,50,-1,16`
+
+Beklenen sonuç:
+
+- Hat switch yukarı tutulduğunda bilek hedef açısı artar.
+- Hat switch aşağı tutulduğunda bilek hedef açısı azalır.
+- Hat switch bırakıldığında hedef açı değişmez.
+- Servo, yapılandırılmış minimum ve maksimum açıları aşmaz.
+- Buton basılı tutulduğunda her pakette tekrar tekrar konum değiştirmez.
+- Servo hedefleri `JointConfig` ve `Pins::SERVO_PINS` limitleri dışına çıkmaz.

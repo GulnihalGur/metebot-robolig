@@ -25,15 +25,16 @@ Toplam fiziksel sürüş BTS sayısı **6**, mantıksal kontrol grubu sayısı *
 |---|---|---|---|
 | Lineer aktüatör BTS7 | RPWM | D0 | Aktüatör ileri yön PWM |
 | Lineer aktüatör BTS7 | LPWM | D1 | Aktüatör geri yön PWM |
-| Ana kıskaç servosu | PWM | D4 | Servo 0 |
-| Ek servo 1 | PWM | MOSI / D7 | SPI kullanılmıyorsa servo pini |
-| Ek servo 2 | PWM | MISO / D6 | SPI kullanılmıyorsa servo pini |
-| Ek servo 3 | PWM | SCK / D5 | SPI kullanılmıyorsa servo pini |
+| Kol taban servosu | PWM | D4 | Servo 0 / `BASE` |
+| Omuz servosu | PWM | MOSI / D7 | Servo 1 / `SHOULDER`; SPI kullanılmaz |
+| Dirsek servosu | PWM | MISO / D6 | Servo 2 / `ELBOW`; SPI kullanılmaz |
+| Bilek servosu | PWM | D12 | Servo 3 / `WRIST` |
+| Kıskaç servosu | PWM | SCK / D5 | Servo 4 / `GRIPPER`; SPI kullanılmaz |
 | OLED | SDA | SDA / D10 | I2C veri |
 | OLED | SCL | SCL / D11 | I2C saat |
 | PN532 | PN532 TX → kart RX | RX / D3 | `RFID_RX` |
 | PN532 | PN532 RX ← kart TX | TX / D2 | `RFID_TX` |
-| Joystick bağlantısı | USB seri | Fiziksel pin yok | 115200 baud |
+| Joystick bağlantısı | Wi-Fi / UDP | Fiziksel pin yok | PC, kartın `METEBOT` ağına bağlanır; UDP 4210 |
 | Batarya ölçümü | ADC | A0 | Batarya ADC pini |
 | BTS8 | RPWM/LPWM | Atanmadı | Yedek sürücü |
 
