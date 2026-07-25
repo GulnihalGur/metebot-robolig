@@ -60,8 +60,7 @@ constexpr RobotArmConfig ARM_CONFIG = {
     Pins::JOYSTICK_TIMEOUT_MS,
     15,
     90,
-    20,
-    90,
+    25,  // Kiskac basili tutma hizi (derece/saniye)
     Constants::JoystickButtons::GRIPPER_OPEN,
     Constants::JoystickButtons::GRIPPER_CLOSE,
     false,

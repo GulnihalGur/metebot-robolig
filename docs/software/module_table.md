@@ -23,3 +23,12 @@
 | `Watchdog` | Ana döngü kilitlenmesini algılama | ESP32 watchdog |
 | `TaskScheduler` | Periyodik işlerin bloklamadan çalışması | Zaman tabanı |
 | `ErrorManager` / `Diagnostics` | Hata kaydı ve tanılama | Seri çıktı |
+
+
+## Kiskac surekli buton kontrolu
+
+`GRIPPER_OPEN` ve `GRIPPER_CLOSE` butonlari sabit bir hedef aciya gitmez.
+Buton basili tutuldugu surece `RobotArm::applyJoystick()` kiskac hedefini
+`gripperControlSpeedDegPerSec` hiziyla kademeli olarak degistirir. Buton
+birakildiginda hedef aci korunur. Iki buton ayni anda basilirsa hareket verilmez.
+Minimum ve maksimum acilar `JointConfig` ve `ServoDriver` limitleriyle korunur.

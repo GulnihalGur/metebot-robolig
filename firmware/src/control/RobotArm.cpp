@@ -10,7 +10,8 @@ RobotArm::RobotArm()
     _baseAngleAccumulator(0),
     _shoulderAngleAccumulator(0),
     _elbowAngleAccumulator(0),
-    _wristAngleAccumulator(0) {}
+    _wristAngleAccumulator(0),
+    _gripperAngleAccumulator(0) {}
 
 bool RobotArm::begin(Joystick& joystick,
                      ServoManager& servoManager,
@@ -20,6 +21,7 @@ bool RobotArm::begin(Joystick& joystick,
       config.minControlSpeedDegPerSec == 0 ||
       config.minControlSpeedDegPerSec >
         config.maxControlSpeedDegPerSec ||
+      config.gripperControlSpeedDegPerSec == 0 ||
       config.gripperOpenButton >= 32 ||
       config.gripperCloseButton >= 32 ||
       config.gripperOpenButton ==
@@ -169,6 +171,7 @@ void RobotArm::resetAngleAccumulators() {
   _shoulderAngleAccumulator = 0;
   _elbowAngleAccumulator = 0;
   _wristAngleAccumulator = 0;
+  _gripperAngleAccumulator = 0;
 }
 
 
@@ -277,23 +280,34 @@ void RobotArm::applyJoystick(
     );
   }
 
-  // Birinci buton kiskaci acar.
-  if (_joystick->buttonPressed(
-        _config.gripperOpenButton
-      )) {
-    _servoManager->setTargetAngle(
-      ServoJoint::GRIPPER,
-      _config.gripperOpenAngle
-    );
+  // Kiskac butonlari artik sabit aciya gitmez.
+  // Buton basili tutuldugu surece hedef aci yavas ve kademeli degisir.
+  const bool openPressed = _joystick->buttonPressed(
+    _config.gripperOpenButton
+  );
+  const bool closePressed = _joystick->buttonPressed(
+    _config.gripperCloseButton
+  );
+
+  int16_t gripperAxisPercent = 0;
+
+  // Iki buton ayni anda basilirsa celisen komut nedeniyle hareket etmez.
+  if (openPressed != closePressed) {
+    gripperAxisPercent = openPressed ? -100 : 100;
   }
 
-  // Ikinci buton kiskaci kapatir.
-  if (_joystick->buttonPressed(
-        _config.gripperCloseButton
-      )) {
-    _servoManager->setTargetAngle(
+  int16_t gripperChange = calculateAngleChange(
+    gripperAxisPercent,
+    _config.gripperControlSpeedDegPerSec,
+    elapsedMs,
+    false,
+    _gripperAngleAccumulator
+  );
+
+  if (gripperChange != 0) {
+    _servoManager->changeTargetAngle(
       ServoJoint::GRIPPER,
-      _config.gripperClosedAngle
+      gripperChange
     );
   }
 }

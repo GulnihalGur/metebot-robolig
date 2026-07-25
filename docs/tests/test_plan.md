@@ -2457,3 +2457,15 @@ Beklenen sonuç:
 - Servo, yapılandırılmış minimum ve maksimum açıları aşmaz.
 - Buton basılı tutulduğunda her pakette tekrar tekrar konum değiştirmez.
 - Servo hedefleri `JointConfig` ve `Pins::SERVO_PINS` limitleri dışına çıkmaz.
+
+
+### Kiskac basili tutma kontrol testi
+
+1. Robotu ARM moduna alin.
+2. Kiskac acma butonuna kisa sure basin; kiskac yalnizca kucuk bir aci kadar hareket etmelidir.
+3. Ayni butonu basili tutun; kiskac basili kaldigi surece kademeli olarak acilmalidir.
+4. Butonu birakin; kiskac o anki hedef acida durmalidir.
+5. Kapatma butonuyla ayni testi ters yonde uygulayin.
+6. Iki butona ayni anda basin; kiskac hareket etmemelidir.
+7. Minimum ve maksimum fiziksel limitlerde buton basili kalsa bile hedef aci limiti asmamalidir.
+8. Wi-Fi paketi kesildiginde yeni kiskac hareketi uretilmemelidir.
