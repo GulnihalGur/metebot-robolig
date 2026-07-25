@@ -43,7 +43,7 @@ struct ServoPin {
 
 static constexpr uint8_t SERVO_COUNT = 4;
 static constexpr ServoPin SERVO_PINS[SERVO_COUNT] = {
-  {"main_gripper", D14, 0, 180, 90},
+  {"main_gripper", D4, 0, 180, 90},
   {"extra_1",      MOSI, 0, 180, 90},  // MOSI = D7
   {"extra_2",      MISO, 0, 180, 90},  // MISO = D6
   {"extra_3",      SCK,  0, 180, 90}   // SCK  = D5
@@ -69,17 +69,17 @@ static constexpr uint8_t PHYSICAL_DRIVE_BTS_COUNT = 6;
 // BTS motor cikislari birbirine baglanmaz.
 static constexpr uint8_t BTS_COUNT = 4;
 static constexpr BtsPins BTS_PINS[BTS_COUNT] = {
-  {"left_front",        D0,  D1,  false},
+  {"left_front",        A0,  A1,  false},
   {"left_bogie_shared", A2,  A3,  false},
-  {"right_front",       D12, D13, false},
-  {"right_bogie_shared",A5,  A6,  false}
+  {"right_front",       A4, A5, false},
+  {"right_bogie_shared", A6,  A7,  false}
 };
 
 // 7. BTS7960 lineer aktuator icin kullanilir.
 static constexpr BtsPins LINEAR_ACTUATOR_PINS = {
   "BTS7_linear_actuator",
-  D4,
-  A4,
+  D0,
+  D1,
   false
 };
 
@@ -103,9 +103,8 @@ static constexpr int8_t LINK_RX = UNUSED_PIN;
 static constexpr int8_t LINK_TX = UNUSED_PIN;
 static constexpr uint32_t LINK_BAUD = 115200;
 
-// Guc izleme
-// Harici batarya gerilim bolucu hatti henuz atanmadigi icin devre disidir.
-static constexpr int8_t BATTERY_ADC = UNUSED_PIN;
+// Guc izleme / Batarya ADC pini
+static constexpr int8_t BATTERY_ADC = D14;
 
 // Varsayilan surus ayarlari
 static constexpr int16_t MOTOR_PWM_MAX = 255;
