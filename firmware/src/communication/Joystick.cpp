@@ -107,9 +107,10 @@ DifferentialOutput Joystick::differential(uint8_t maxPwm) const {
   int16_t forward =
     map(_packet.yPercent, -100, 100, -maxPwm, maxPwm);
 
-  // X eksenini donus degerine cevirir.
+  // Twist eksenini sag/sol donus degerine cevirir.
+  // DRIVE modunda X ekseni bilincli olarak kullanilmaz.
   int16_t turn =
-    map(_packet.xPercent, -100, 100, -maxPwm, maxPwm);
+    map(_packet.twistPercent, -100, 100, -maxPwm, maxPwm);
 
   int16_t left = forward + turn;
   int16_t right = forward - turn;
