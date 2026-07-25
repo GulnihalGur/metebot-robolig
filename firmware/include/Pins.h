@@ -69,10 +69,10 @@ static constexpr uint8_t PHYSICAL_DRIVE_BTS_COUNT = 6;
 // BTS motor cikislari birbirine baglanmaz.
 static constexpr uint8_t BTS_COUNT = 4;
 static constexpr BtsPins BTS_PINS[BTS_COUNT] = {
-  {"left_front",        A0,  A1,  false},
-  {"left_bogie_shared", A2,  A3,  false},
-  {"right_front",       A4, A5, false},
-  {"right_bogie_shared", A6,  A7,  false}
+  {"left_front",        A1,  A2,  false},
+  {"left_bogie_shared", A3,  A4,  false},
+  {"right_front",       A5, A6, false},
+  {"right_bogie_shared", A7,  D14,  false}
 };
 
 // 7. BTS7960 lineer aktuator icin kullanilir.
@@ -104,7 +104,7 @@ static constexpr int8_t LINK_TX = UNUSED_PIN;
 static constexpr uint32_t LINK_BAUD = 115200;
 
 // Guc izleme / Batarya ADC pini
-static constexpr int8_t BATTERY_ADC = D14;
+static constexpr int8_t BATTERY_ADC = A0;
 
 // Varsayilan surus ayarlari
 static constexpr int16_t MOTOR_PWM_MAX = 255;
