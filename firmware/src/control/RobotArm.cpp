@@ -215,27 +215,27 @@ void RobotArm::applyJoystick(
   uint16_t controlSpeed =
     calculateControlSpeed(packet.throttlePercent);
 
-  // X ekseni taban servosunu kontrol eder.
+  // Twist hareketi robot kolunun tabanini (base) dondurur.
   int16_t baseChange = calculateAngleChange(
-    packet.xPercent,
+    packet.twistPercent,
     controlSpeed,
     elapsedMs,
     _config.invertBase,
     _baseAngleAccumulator
   );
 
-  // Y ekseni omuz servosunu kontrol eder.
+  // X ekseni omuz eklemini sag/sol yonunde kontrol eder.
   int16_t shoulderChange = calculateAngleChange(
-    packet.yPercent,
+    packet.xPercent,
     controlSpeed,
     elapsedMs,
     _config.invertShoulder,
     _shoulderAngleAccumulator
   );
 
-  // Twist ekseni dirsek servosunu kontrol eder.
+  // Y ekseni dirsek eklemini ileri/geri kontrol eder.
   int16_t elbowChange = calculateAngleChange(
-    packet.twistPercent,
+    packet.yPercent,
     controlSpeed,
     elapsedMs,
     _config.invertElbow,

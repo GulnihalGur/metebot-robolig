@@ -950,7 +950,7 @@ JOY,-50,0,0,20,-1,0
 
 * Sağ ve sol motor grupları uygun zıt yönlerde çalışmalıdır.
 * Robot kendi merkezi çevresinde kontrollü dönmelidir.
-* Dönüş yönü joystick X ekseniyle uyumlu olmalıdır.
+* Dönüş yönü joystick twist ekseniyle uyumlu olmalıdır. DRIVE modunda X ekseni sürüşü etkilememelidir.
 
 ---
 

@@ -33,6 +33,15 @@ Eksen numaralari joystick modelinde farkliysa:
 py pc_joystick_wifi.py --x-axis 0 --y-axis 1 --twist-axis 2 --throttle-axis 3 --show
 ```
 
+## Eksen gorevleri
+
+| Mod | Y ekseni | X ekseni | Twist |
+|---|---|---|---|
+| DRIVE | Ileri / geri hiz | Kullanilmaz | Hareket halinde veya dururken saga / sola donus |
+| ARM | Dirsek ileri / geri | Omuz sag / sol | Base donusu |
+
+DRIVE modunda diferansiyel surus hesabi `sol = ileri + donus`, `sag = ileri - donus` seklindedir. Twist birakilip merkeze geldiginde robot yeniden duz ilerler. Y merkezdeyken twist uygulanirsa robot kendi ekseni etrafinda doner.
+
 ## Butonlar
 
 - Fiziksel buton 1: gripper ac
