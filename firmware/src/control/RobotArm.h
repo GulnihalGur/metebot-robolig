@@ -20,6 +20,7 @@ struct RobotArmConfig {
   bool invertBase;
   bool invertShoulder;
   bool invertElbow;
+  bool invertWrist;
 };
 
 // Joystick verisini eklem acilarina cevirir.
@@ -62,6 +63,7 @@ private:
   int64_t _baseAngleAccumulator;
   int64_t _shoulderAngleAccumulator;
   int64_t _elbowAngleAccumulator;
+  int64_t _wristAngleAccumulator;
 
   static constexpr int64_t ANGLE_UNITS_PER_DEGREE = 100000LL;
 
@@ -74,6 +76,9 @@ private:
 
   // Bekleyen kesirli hareketleri temizler.
   void resetAngleAccumulators();
+
+  // Hat switch yonunu bilek ekseni yuzdesine cevirir.
+  static int16_t wristAxisPercent(int16_t hatAngle);
 
   // Gaz koluna gore kontrol hizini hesaplar.
   uint16_t calculateControlSpeed(

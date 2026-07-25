@@ -8,7 +8,8 @@ enum class ServoJoint : uint8_t {
   BASE = 0,
   SHOULDER = 1,
   ELBOW = 2,
-  GRIPPER = 3
+  WRIST = 3,
+  GRIPPER = 4
 };
 
 // Bir eklemin hareket ayarlarini tutar.
@@ -23,7 +24,7 @@ struct JointConfig {
 // ServoDriver uzerinden eklemleri yonetir.
 class ServoManager {
 public:
-  static constexpr uint8_t JOINT_COUNT = 4;
+  static constexpr uint8_t JOINT_COUNT = 5;
 
   ServoManager();
 

@@ -8,8 +8,8 @@
 | `MotorDriver` | Dört mantıksal BTS kanalına güvenli PWM yazma | `Pins.h` |
 | `MotionController` | Diferansiyel sürüş, PWM sınırı ve rampa | `MotorDriver`, `Joystick` |
 | `ServoDriver` | Tekil servo donanım erişimi | `Pins.h` |
-| `ServoManager` | Dört eklemin açı ve hız yönetimi | `ServoDriver` |
-| `RobotArm` | Joystickten kol ve kıskaç komutları | `ServoManager`, `Joystick` |
+| `ServoManager` | Beş eksenin açı ve hız yönetimi | `ServoDriver` |
+| `RobotArm` | Joystick eksenlerinden taban, omuz ve dirsek; hat switchten bilek; butonlardan kıskaç komutları | `ServoManager`, `Joystick` |
 | `LinearActuator` | BTS7 üzerinden aktüatör ileri/geri/dur | `Pins::LINEAR_ACTUATOR_PINS` |
 | `RFID` | PN532 UID okuma | UART, PN532 kütüphanesi |
 | `SlotManager` | Beş slotun doluluk ve yük bilgisi | `Constants`, `Types` |

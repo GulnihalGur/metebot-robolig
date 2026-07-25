@@ -9,7 +9,8 @@ RobotArm::RobotArm()
     _active(false),
     _baseAngleAccumulator(0),
     _shoulderAngleAccumulator(0),
-    _elbowAngleAccumulator(0) {}
+    _elbowAngleAccumulator(0),
+    _wristAngleAccumulator(0) {}
 
 bool RobotArm::begin(Joystick& joystick,
                      ServoManager& servoManager,
@@ -167,6 +168,22 @@ void RobotArm::resetAngleAccumulators() {
   _baseAngleAccumulator = 0;
   _shoulderAngleAccumulator = 0;
   _elbowAngleAccumulator = 0;
+  _wristAngleAccumulator = 0;
+}
+
+
+int16_t RobotArm::wristAxisPercent(int16_t hatAngle) {
+  // Hat merkezdeyse bilek durur.
+  if (hatAngle < 0) return 0;
+
+  // Yukari ve yukari capraz yonler bilegi bir yone hareket ettirir.
+  if (hatAngle >= 315 || hatAngle <= 45) return 100;
+
+  // Asagi ve asagi capraz yonler bilegi ters yone hareket ettirir.
+  if (hatAngle >= 135 && hatAngle <= 225) return -100;
+
+  // Yalnizca sag veya sol secildiginde bilek hareket etmez.
+  return 0;
 }
 
 uint16_t RobotArm::calculateControlSpeed(
@@ -240,6 +257,23 @@ void RobotArm::applyJoystick(
     _servoManager->changeTargetAngle(
       ServoJoint::ELBOW,
       elbowChange
+    );
+  }
+
+
+  // Joystick uzerindeki hat switch yukari-asagi hareketi bilegi kontrol eder.
+  int16_t wristChange = calculateAngleChange(
+    wristAxisPercent(packet.hatAngle),
+    controlSpeed,
+    elapsedMs,
+    _config.invertWrist,
+    _wristAngleAccumulator
+  );
+
+  if (wristChange != 0) {
+    _servoManager->changeTargetAngle(
+      ServoJoint::WRIST,
+      wristChange
     );
   }
 
