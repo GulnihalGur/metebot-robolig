@@ -11,8 +11,8 @@ struct RobotArmConfig {
   uint8_t minControlSpeedDegPerSec;
   uint8_t maxControlSpeedDegPerSec;
 
-  uint8_t gripperOpenAngle;
-  uint8_t gripperClosedAngle;
+  // Kiskac butonla tutuldugu surece kullanilacak yavas hareket hizi.
+  uint8_t gripperControlSpeedDegPerSec;
 
   uint8_t gripperOpenButton;
   uint8_t gripperCloseButton;
@@ -64,6 +64,7 @@ private:
   int64_t _shoulderAngleAccumulator;
   int64_t _elbowAngleAccumulator;
   int64_t _wristAngleAccumulator;
+  int64_t _gripperAngleAccumulator;
 
   static constexpr int64_t ANGLE_UNITS_PER_DEGREE = 100000LL;
 
